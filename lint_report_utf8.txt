@@ -1,0 +1,215 @@
+﻿
+> quipureservas@0.0.0 lint
+> eslint .
+
+
+C:\QuipuReservas\check_db2.js
+  10:19  error  'cols' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\QuipuReservas\check_template.js
+  5:21  error  'process' is not defined  no-undef
+  6:21  error  'process' is not defined  no-undef
+
+C:\QuipuReservas\clean_leads.js
+  1:26  error  'require' is not defined  no-undef
+  1:71  error  'require' is not defined  no-undef
+
+C:\QuipuReservas\db_check.js
+   5:21  error  'process' is not defined                                                                  no-undef
+   6:21  error  'process' is not defined                                                                  no-undef
+  14:19  error  'authData' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  14:36  error  'authErr' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u   no-unused-vars
+  20:36  error  'errA' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u      no-unused-vars
+  23:30  error  'errUa' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u     no-unused-vars
+
+C:\QuipuReservas\fix.js
+  1:12  error  'require' is not defined  no-undef
+
+C:\QuipuReservas\fix_templates.js
+  5:58  error  'e' is defined but never used  no-unused-vars
+  5:61  error  Empty block statement          no-empty
+
+C:\QuipuReservas\scripts\create_opcionales_table.js
+   9:10  error  'e' is defined but never used                                                             no-unused-vars
+  11:5   error  'process' is not defined                                                                  no-undef
+  30:7   error  'supabase' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\QuipuReservas\scripts\patch_tours.js
+    9:10  error  'e' is defined but never used  no-unused-vars
+   11:5   error  'process' is not defined       no-undef
+   32:5   error  'process' is not defined       no-undef
+  113:5   error  'process' is not defined       no-undef
+  118:5   error  'process' is not defined       no-undef
+
+C:\QuipuReservas\src\components\CellInput.jsx
+  23:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  21 |         if (prevValueRef.current !== undefined && value !== prevValueRef.current) {
+  22 |             // value updated from parent/server
+> 23 |             setFlashState('saved')
+     |             ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  24 |             setTimeout(() => setFlashState(''), 1500)
+  25 |         }
+  26 |         prevValueRef.current = value  react-hooks/set-state-in-effect
+  33:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  31 |         // Unsaved local changes
+  32 |         if (value !== undefined && val !== (value || '')) {
+> 33 |             setFlashState('unsaved')
+     |             ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  34 |         }
+  35 |     }, [val, value])
+  36 |                                                                                                             react-hooks/set-state-in-effect
+
+C:\QuipuReservas\src\components\Layout.jsx
+  38:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  36 |     // Cerrar sidebar al cambiar de ruta en mobile
+  37 |     useEffect(() => {
+> 38 |         closeSidebar()
+     |         ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  39 |     }, [location])
+  40 |
+  41 |     return (  react-hooks/set-state-in-effect
+
+C:\QuipuReservas\src\components\leads\EliteEmailEditor.jsx
+   1:38  error  'useCallback' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  15:29  error  'Icon' is defined but never used                                                    no-unused-vars
+
+C:\QuipuReservas\src\components\leads\modals\IndividualEmailModal.jsx
+  5:26  error  'emailMode' is defined but never used                   no-unused-vars
+  5:37  error  'setEmailMode' is defined but never used                no-unused-vars
+  5:51  error  'selectedSequenceId' is defined but never used          no-unused-vars
+  5:71  error  'setSelectedSequenceId' is defined but never used       no-unused-vars
+  5:94  error  'secuencias' is defined but never used                  no-unused-vars
+  8:76  error  'startDripSequenceFromModal' is defined but never used  no-unused-vars
+
+C:\QuipuReservas\src\components\leads\modals\LeadDetailPanel.jsx
+  115:41  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  113 |         if (!detailLead) return
+  114 |         // Auto-preselect the first sorted template if available
+> 115 |         if (sortedTemplates.length > 0) setSelectedPanelTemplate(sortedTemplates[0].id)
+      |                                         ^^^^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  116 |         const handle = (e) => { if (e.key === 'Escape') setDetailLead(null) }
+  117 |         document.addEventListener('keydown', handle, true)
+  118 |         return () => document.removeEventListener('keydown', handle, true)  react-hooks/set-state-in-effect
+  119:8   warning  React Hook useEffect has a missing dependency: 'sortedTemplates'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           react-hooks/exhaustive-deps
+
+C:\QuipuReservas\src\components\leads\modals\LeadFormModal.jsx
+  13:22  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+  11 |     // Reset errors when modal opens/closes
+  12 |     useEffect(() => {
+> 13 |         if (!show) { setErrors({}); setSaving(false) }
+     |                      ^^^^^^^^^ Avoid calling setState() directly within an effect
+  14 |     }, [show])
+  15 |
+  16 |     // Escape key  react-hooks/set-state-in-effect
+
+C:\QuipuReservas\src\components\reservas\ReservaFormModal.jsx
+   6:17  error  'useCallback' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  19:5   error  'descuentosList' is defined but never used                                          no-unused-vars
+
+C:\QuipuReservas\src\context\AuthContext.jsx
+  141:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+C:\QuipuReservas\src\hooks\useLeadEmail.js
+  317:8  warning  React Hook useCallback has an unnecessary dependency: 'agencia'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\QuipuReservas\src\hooks\useMarketingData.js
+  281:46  error  'onConfirm' is defined but never used  no-unused-vars
+
+C:\QuipuReservas\src\hooks\useReservasData.js
+  221:26  error  'error' is defined but never used  no-unused-vars
+  247:22  error  'err' is defined but never used    no-unused-vars
+  268:18  error  'error' is defined but never used  no-unused-vars
+
+C:\QuipuReservas\src\pages\LeadsPage.jsx
+   12:31  error    'useRef' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                       no-unused-vars
+  106:30  error    'seqEnrollmentsFromSync' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u              no-unused-vars
+  106:78  error    'setSeqEnrollmentsSync' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u               no-unused-vars
+  414:8   warning  React Hook useCallback has a missing dependency: 'finishWaClick'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  440:58  error    'tel' is assigned to itself                                                                                         no-self-assign
+
+C:\QuipuReservas\src\pages\configuracion\tabs\PlantillasTab.jsx
+  167:114  error  'TIPOS_LABELS' is not defined      no-undef
+  205:61   error  'TIPOS_OPERATIVAS' is not defined  no-undef
+  209:54   error  'TIPOS_LABELS' is not defined      no-undef
+  226:61   error  'TIPOS_OPERATIVAS' is not defined  no-undef
+  260:98   error  'TIPOS_LABELS' is not defined      no-undef
+  263:46   error  'TIPOS_OPERATIVAS' is not defined  no-undef
+  263:99   error  'TIPOS_LABELS' is not defined      no-undef
+  316:42   error  'SHORTCODES_HELP' is not defined   no-undef
+
+C:\QuipuReservas\src\pages\configuracion\tabs\PlantillasWhatsAppTab.jsx
+  150:200  error  'TIPOS_LABELS' is not defined      no-undef
+  202:57   error  'TIPOS_OPERATIVAS' is not defined  no-undef
+  223:22   error  'SHORTCODES_HELP' is not defined   no-undef
+  311:102  error  'TIPOS_LABELS' is not defined      no-undef
+  314:50   error  'TIPOS_OPERATIVAS' is not defined  no-undef
+  314:103  error  'TIPOS_LABELS' is not defined      no-undef
+  372:42   error  'SHORTCODES_HELP' is not defined   no-undef
+
+C:\QuipuReservas\src\pages\configuracion\tabs\SeedTab.jsx
+  1:20  error  'useEffect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  2:10  error  'supabase' is defined but never used. Allowed unused vars must match /^[A-Z_]/u   no-unused-vars
+
+C:\QuipuReservas\test_db.js
+  4:17  error  'error' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\QuipuReservas\test_sanitize.js
+   1:12  error  'require' is not defined            no-undef
+   7:92  error  Unnecessary escape character: \"    no-useless-escape
+   7:95  error  Unnecessary escape character: \"    no-useless-escape
+  11:13  error  'sanitizeQuillHtml' is not defined  no-undef
+  13:13  error  'sanitizeQuillHtml' is not defined  no-undef
+  15:13  error  'sanitizeQuillHtml' is not defined  no-undef
+
+C:\QuipuReservas\tmp\query.js
+   1:26  error  'require' is not defined                                                                no-undef
+   2:1   error  'require' is not defined                                                                no-undef
+   4:21  error  'process' is not defined                                                                no-undef
+   5:21  error  'process' is not defined                                                                no-undef
+  21:31  error  'seqErr' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  28:31  error  'logErr' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+C:\QuipuReservas\tmp_check.js
+   1:26  error  'require' is not defined  no-undef
+  10:3   error  'process' is not defined  no-undef
+
+C:\QuipuReservas\tmp_config.jsx
+  1:1  error  Parsing error: Unexpected character '�'
+
+✖ 82 problems (79 errors, 3 warnings)
+
