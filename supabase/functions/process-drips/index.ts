@@ -23,7 +23,7 @@ function getCorsHeaders(req: Request) {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-const resendKey = Deno.env.get('RESEND_API_KEY') || ''
+const globalResendKey = Deno.env.get('RESEND_API_KEY') || ''
 
 // We create a master service client for DB operations inside the function
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -38,13 +38,12 @@ async function verifyAuth(req: Request): Promise<boolean> {
     const token = authHeader.replace('Bearer ', '').trim();
     if (!token) return false;
 
-    // Allow internal service-role calls (e.g. from meta-webhook)
+    // Allow internal service-role calls (e.g. from meta-webhook or pg_cron trigger)
     if (token === supabaseServiceKey) {
         console.log('[Drips Auth] Authorized via service-role key (internal call).');
         return true;
     }
 
-    // Verify user JWT token
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
     const authClient = createClient(supabaseUrl, anonKey);
     const { data: { user }, error } = await authClient.auth.getUser(token);
@@ -58,165 +57,116 @@ async function verifyAuth(req: Request): Promise<boolean> {
 }
 
 // ============================================================
-// CONCURRENCY LOCK — Soft in-memory lock using a flag in DB
-// Falls back gracefully if the RPC does not exist.
+// CONCURRENCY LOCK
 // ============================================================
 const DRIP_LOCK_KEY = 111222333
 
 async function acquireAdvisoryLock(): Promise<boolean> {
     try {
         const { data, error } = await supabase.rpc('try_advisory_lock', { lock_key: DRIP_LOCK_KEY })
-        if (error) {
-            // RPC might not exist — log but do NOT crash the function
-            console.warn('[Drips] Advisory lock RPC failed (non-fatal):', error.message)
-            return true // proceed without lock
-        }
+        if (error) return true 
         return data === true
     } catch (e) {
-        console.warn('[Drips] Advisory lock exception (non-fatal):', e)
-        return true // proceed without lock
+        return true 
     }
 }
 
 async function releaseAdvisoryLock(): Promise<void> {
     try {
         await supabase.rpc('release_advisory_lock', { lock_key: DRIP_LOCK_KEY })
-    } catch (_) {
-        // Ignore — non-fatal
-    }
+    } catch (_) {}
 }
 
 function formatTemporada(t: string | null | undefined): string {
     if (!t) return 'sus próximas vacaciones';
     const str = t.toLowerCase();
-    // Identificar temporada de lluvias / final de año
     if (str.includes('lluvia') || str.includes('baja') || str.includes('octubre') || str.includes('marzo')) {
         return 'octubre - marzo';
     }
-    // Por defecto asume buena temporada / temporada seca
     return 'abril - setiembre';
 }
 
-// ─── HMAC Token for Unsubscribe Links ───
-// Same algorithm as in the unsubscribe Edge Function
 async function generateUnsubToken(leadId: string): Promise<string> {
     const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || 'fallback-secret';
-    const key = await crypto.subtle.importKey(
-        'raw',
-        new TextEncoder().encode(secret),
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign']
-    );
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
     const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(leadId));
     const b64 = btoa(String.fromCharCode(...new Uint8Array(sig)));
     return b64.replace(/[+/=]/g, '').substring(0, 32);
 }
 
-// ─── Extract clean email from "Name <email>" format ───
 function extractEmail(raw: string): string {
     if (!raw) return '';
     const match = raw.match(/<([^>]+)>/);
     return match ? match[1].trim() : raw.trim();
 }
 
-// ─── HTML Flattener — Fixes malformed nested <p> from TipTap editor ───
 function flattenHtml(raw: string): string {
     if (!raw) return '';
     let s = raw;
-
-    // 1. Flatten nested <p> tags: <p><p>content</p></p> → <p>content</p>
-    let prev = '';
-    while (s !== prev) {
-        prev = s;
-        s = s.replace(/<p([^>]*)>\s*<p/gi, '<p');
-        s = s.replace(/<\/p>\s*<\/p>/gi, '</p>');
+    // Safe, bounded loop — max 10 passes to collapse nested empty <p> tags.
+    // Replaces: <p ...>\s*<p with <p (removes an extra wrapping <p>)
+    // This is safe because each pass reduces the number of nested tags by one layer.
+    const MAX_PASSES = 10;
+    for (let i = 0; i < MAX_PASSES; i++) {
+        const next = s
+            .replace(/<p([^>]*)>\s*<p/gi, '<p')
+            .replace(/<\/p>\s*<\/p>/gi, '</p>');
+        if (next === s) break;
+        s = next;
     }
-
-    // 2. Collapse excessive consecutive <br> tags into one
+    // Collapse multiple consecutive <br> into a single one — safe single-pass
     s = s.replace(/(<br\s*\/?\s*>[\s\n]*){2,}/gi, '<br>');
-
     return s.trim();
 }
 
-// ─── HTML Sanitizer — Simplified for Raw HTML mode ───
 function sanitizeHtmlForEmail(raw: string): string {
     if (!raw) return '';
-
-    // STEP 0: Flatten nested/malformed HTML from TipTap editor
     let s = flattenHtml(raw);
 
-    // STEP 0.5: Force empty paragraphs to have a <br> so email clients do not collapse them
+    // 1. Fill truly empty <p></p> with a line break so email clients render spacing
     s = s.replace(/<p([^>]*)>\s*<\/p>/gi, '<p$1><br></p>');
 
-    // STEP 1: Merge lone-emoji paragraphs with the next paragraph.
-    // We use a while loop to handle consecutive emoji blocks, and
-    let prev = '';
-    while (s !== prev) {
-        prev = s;
-        // Match 2 consecutive paragraphs
-        s = s.replace(/<p([^>]*)>([\s\S]*?)<\/p>[\s\n]*(?:<br\s*\/?>)?[\s\n]*<p([^>]*)>([\s\S]*?)<\/p>/gi, (match, a1, c1, a2, c2) => {
+    // 2. Merge standalone emoji-only <p> into adjacent content paragraphs.
+    //    Safe bounded loop (max 10) — each pass reduces emoji-orphan <p> count by at least 1.
+    const MAX_PASSES = 10;
+    for (let i = 0; i < MAX_PASSES; i++) {
+        // Regex matches two consecutive <p>...</p> blocks. Safe because:
+        //  - Each capture group is non-greedy ([\s\S]*?) so it stops at the FIRST </p>.
+        //  - Outer match only processes two consecutive paragraphs, not an arbitrary chain.
+        const emojiMergeRe = /<p([^>]*)>([\s\S]*?)<\/p>[\s\n]*(?:<br\s*\/?>)?[\s\n]*<p([^>]*)>([\s\S]*?)<\/p>/i;
+        const prev = s;
+        s = s.replace(emojiMergeRe, (match, a1, c1, a2, c2) => {
             const strip1 = c1.replace(/<[^>]+>/g, '').replace(/&[a-zA-Z0-9#]+;/g, '').trim();
-            const isEmoji1 = (strip1.length > 0 && strip1.length <= 10 && !/[a-zA-Z0-9]/.test(strip1));
-
+            const isEmoji1 = strip1.length > 0 && strip1.length <= 10 && !/[a-zA-Z0-9]/.test(strip1);
             const strip2 = c2.replace(/<[^>]+>/g, '').replace(/&[a-zA-Z0-9#]+;/g, '').trim();
-            const isEmoji2 = (strip2.length > 0 && strip2.length <= 10 && !/[a-zA-Z0-9]/.test(strip2));
-
-            // Merge backwards: Para 2 is emoji -> append to Para 1
-            if (isEmoji2 && !isEmoji1) {
-                return `<p${a1}>${c1} ${c2}</p>`;
-            }
-            // Merge forwards: Para 1 is emoji -> prepend to Para 2
-            if (isEmoji1 && !isEmoji2) {
-                return `<p${a2}>${c1} ${c2}</p>`;
-            }
-            // Both emojis -> merge forward
-            if (isEmoji1 && isEmoji2) {
-                return `<p${a2}>${c1} ${c2}</p>`;
-            }
+            const isEmoji2 = strip2.length > 0 && strip2.length <= 10 && !/[a-zA-Z0-9]/.test(strip2);
+            if (isEmoji2 && !isEmoji1) return `<p${a1}>${c1} ${c2}</p>`;
+            if (isEmoji1 && !isEmoji2) return `<p${a2}>${c1} ${c2}</p>`;
+            if (isEmoji1 && isEmoji2) return `<p${a2}>${c1} ${c2}</p>`;
             return match;
         });
+        if (s === prev) break;
     }
 
-    // STEP 2: Remove <br> immediately after a short non-ASCII token (emoji) in the same block
-    s = s.replace(/(<[^>]*>)?(?:&nbsp;|\s)*([^\s<a-zA-Z0-9&;#>="']{1,8})(?:&nbsp;|\s)*<br\s*\/?>[\s\n]*/gi, (match, tag, chars) => {
-        return (tag || '') + chars + ' ';
-    });
+    // 3. Strip standalone emoji+br fragments (single-pass, no loop risk)
+    s = s.replace(/(<[^>]*>)?(?:&nbsp;|\s)*([^\s<a-zA-Z0-9&;#>="']{1,8})(?:&nbsp;|\s)*<br\s*\/?>\s*/gi,
+        (match, tag, chars) => (tag || '') + chars + ' ');
 
-    // STEP 3: Apply uniform standard margins for naked paragraphs
+    // 4. Inject email-safe margin to bare <p> tags (single-pass)
     s = s.replace(/<p>/gi, '<p style="margin: 0 0 14px 0;">');
-    s = s.replace(/style="margin: 0 0 14px 0;" style="margin: 0 0 14px 0;"/gi, 'style="margin: 0 0 14px 0;"');
 
-    // STEP 4: Normalize bold tags
+    // 5. Cleanup: remove duplicate style attrs if a <p> already had inline style
+    s = s.replace(/style="margin: 0 0 14px 0;" style="margin: 0 0 14px 0;"/gi,
+        'style="margin: 0 0 14px 0;"');
+
+    // 6. Normalize <b> to <strong>
     s = s.replace(/<b>/gi, '<strong>').replace(/<\/b>/gi, '</strong>');
 
     return s;
 }
 
-// ─── Full HTML Email Wrapper ───
-function wrapEmailTemplate(opts: {
-    body: string,
-    agencyName?: string,
-    agencyUrl?: string,
-    agencyEmail?: string,
-    agencyPhone?: string,
-    logoUrl?: string,
-    previewText?: string,
-    primaryColor?: string,
-    unsubscribeUrl?: string
-}): string {
-    const {
-        body,
-        agencyName = 'Agencia',
-        agencyUrl = '',
-        agencyEmail = '',
-        agencyPhone = '',
-        logoUrl = '',
-        previewText = '',
-        primaryColor = '#1a73e8',
-        unsubscribeUrl = ''
-    } = opts;
-
+function wrapEmailTemplate(opts: any): string {
+    const { body, agencyName = 'Agencia', agencyUrl = '', agencyEmail = '', agencyPhone = '', logoUrl = '', previewText = '', primaryColor = '#1a73e8', unsubscribeUrl = '' } = opts;
     const safeBody = sanitizeHtmlForEmail(body || '');
     const year = new Date().getFullYear();
     const displayPreview = previewText || `${agencyName} — Información importante para tu viaje`;
@@ -260,10 +210,7 @@ function wrapEmailTemplate(opts: {
                             <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                                 <tr>
                                     <td align="center" style="background-color:#000000;border-radius:16px 16px 0 0;padding:28px 20px;">
-                                        ${safeLogoUrl
-                                            ? `<img src="${safeLogoUrl}" alt="${agencyName}" width="220" style="max-width:220px;height:auto;display:block;border:0;margin:0 auto;" />`
-                                            : `<h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:800;letter-spacing:-0.03em;font-family:'Segoe UI',Roboto,sans-serif;">${agencyName}</h1>`
-                                        }
+                                        ${safeLogoUrl ? `<img src="${safeLogoUrl}" alt="${agencyName}" width="220" style="max-width:220px;height:auto;display:block;border:0;margin:0 auto;" />` : `<h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:800;letter-spacing:-0.03em;font-family:'Segoe UI',Roboto,sans-serif;">${agencyName}</h1>`}
                                     </td>
                                 </tr>
                                 <tr>
@@ -301,6 +248,8 @@ function wrapEmailTemplate(opts: {
 </body></html>`;
 }
 
+// Helper to pause execution
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ============================================================
 // MAIN HANDLER
@@ -312,24 +261,16 @@ serve(async (req: Request) => {
         return new Response('ok', { headers: corsHeaders })
     }
 
-    // Verify JWT
     const isAuthenticated = await verifyAuth(req);
     if (!isAuthenticated) {
         console.warn('[Drips] Unauthorized execution attempt blocked.');
-        return new Response(JSON.stringify({ error: 'Unauthorized. Require valid Bearer token.' }), {
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
+        return new Response(JSON.stringify({ error: 'Unauthorized. Require valid Bearer token.' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }});
     }
 
-    // Acquire lock — non-fatal if RPC doesn't exist
     const lockAcquired = await acquireAdvisoryLock()
     if (!lockAcquired) {
         console.warn('[Drips] Another instance is already running — skipping.')
-        return new Response(JSON.stringify({ skipped: true, reason: 'concurrent_lock' }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200
-        })
+        return new Response(JSON.stringify({ skipped: true, reason: 'concurrent_lock' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 })
     }
 
     let enviados = 0;
@@ -345,7 +286,7 @@ serve(async (req: Request) => {
                 lead:leads!inner(id, nombre, email, telefono, tour_nombre, form_name, temporada, agencia_id, estado, ultimo_contacto, idioma, unsubscribed, email_rebotado),
                 secuencia:secuencias_marketing!inner(
                     id, activa, nombre, agencia_id,
-                    pasos:pasos_secuencia(dia_envio, plantilla_email_id)
+                    pasos:pasos_secuencia(dia_envio, plantilla_email_id, tipo_mensaje, whatsapp_template_name)
                 )
             `)
             .eq('estado', 'en_progreso')
@@ -356,22 +297,85 @@ serve(async (req: Request) => {
 
         console.log(`[Drips] Processing ${activeLeadsSecs?.length || 0} active sequences in this batch.`);
 
+        // --- PREPARE AGENCY CONFIGS AND CONNECTION POOLS ---
+        const agencyMap = new Map<string, any>();
+        
+        // Group by agency to fetch configs only once
+        for (const ls of (activeLeadsSecs || [])) {
+            if (!ls.secuencia?.activa || !ls.secuencia?.agencia_id) continue;
+            const agId = ls.secuencia.agencia_id;
+            
+            if (!agencyMap.has(agId)) {
+                // Fetch config
+                const { data: configData } = await supabase.from('configuracion').select('clave, valor').eq('agencia_id', agId);
+                const config: Record<string, string> = {};
+                configData?.forEach((r: any) => { config[r.clave] = r.valor });
+                
+                agencyMap.set(agId, { id: agId, config, authError: false, transporter: null });
+            }
+        }
+
+        // Create nodemailer pools
+        for (const [agId, st] of agencyMap.entries()) {
+            const finalResendKey = st.config['resend_api_key'] || globalResendKey;
+            const gmailAppPassword = st.config['gmail_app_password'] || '';
+            const provider = st.config['proveedor_email'] || (gmailAppPassword ? 'gmail' : finalResendKey ? 'resend' : '');
+            st.provider = provider;
+            
+            if (provider === 'gmail' && gmailAppPassword) {
+                const fromEmailRaw = st.config['email_remitente'] || 'noreply@agencia.com';
+                const smtpUser = st.config['gmail_user'] || extractEmail(fromEmailRaw);
+                // CREATE A SINGLE CONNECTION POOL
+                st.transporter = nodemailer.createTransport({
+                    service: 'gmail',
+                    auth: { user: smtpUser, pass: gmailAppPassword },
+                    pool: true,
+                    maxConnections: 1, // Be polite to Google
+                    maxMessages: 50
+                });
+            } else if (provider === 'resend') {
+                st.resendKey = finalResendKey;
+            }
+        }
+
+        // --- PROCESS LEADS SEQUENTIALLY WITH RATE LIMITING ---
         const counter = { enviados: 0 };
         for (let i = 0; i < (activeLeadsSecs || []).length; i++) {
             const ls = activeLeadsSecs![i];
+            const agId = ls.secuencia?.agencia_id;
+            const agencyContext = agencyMap.get(agId);
+
             try {
-                // ROUND-ROBIN QUEUE ROTATION: Touch the updated_at timestamp immediately so it goes to the back of the queue
+                // Touch queue correctly to re-order
                 await supabase.from('leads_secuencias').update({ updated_at: new Date().toISOString() }).eq('id', ls.id);
                 
-                await processLead(ls, counter, failedEmails, resendKey);
+                // If agency is broken globally (e.g. invalid password), skip its leads immediately
+                if (agencyContext?.authError) {
+                    console.log(`[Drips] Skipping lead ${ls.lead?.email} due to existing agency auth failure.`);
+                    continue;
+                }
+
+                await processLead(ls, counter, failedEmails, agencyContext);
+
+                // Anti-spam delay between emails for Gmail
+                if (agencyContext?.provider === 'gmail') {
+                    await delay(1200); // Wait 1.2s between Gmail sends
+                }
             } catch (leadErr: any) {
                 console.error(`[Drips] Unhandled error for lead ${ls.lead?.id}:`, leadErr.message);
                 failedEmails.push(`Error procesando lead ${ls.lead?.email || ls.lead?.id}: ${leadErr.message}`);
+                
+                // If the error is a definitive auth failure from Gmail, mark the agency as broken
+                if (leadErr.message?.includes('Invalid login') || leadErr.message?.includes('Application-specific password required')) {
+                    if (agencyContext) agencyContext.authError = true;
+                }
             }
+        }
 
-            // Humanized delay to prevent Gmail rate limits and SMTP connection resets
-            if (i < activeLeadsSecs!.length - 1) {
-                await new Promise(resolve => setTimeout(resolve, 800));
+        // --- TEARDOWN POOLS ---
+        for (const [_, st] of agencyMap.entries()) {
+            if (st.transporter) {
+                st.transporter.close();
             }
         }
 
@@ -381,10 +385,7 @@ serve(async (req: Request) => {
 
     } catch (err: any) {
         console.error("[Drips] Fatal error:", err);
-        return new Response(JSON.stringify({ error: err.message }), {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
+        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } finally {
         await releaseAdvisoryLock()
         console.log('[Drips] Lock released.')
@@ -393,88 +394,44 @@ serve(async (req: Request) => {
 
 
 // ============================================================
-// PROCESS INDIVIDUAL LEAD — extracted for clarity & error isolation
+// PROCESS INDIVIDUAL LEAD
 // ============================================================
-async function processLead(ls: any, counter: { enviados: number }, failedEmails: string[], globalResendKey: string) {
-    if (!ls.secuencia?.activa) return;
+async function processLead(ls: any, counter: { enviados: number }, failedEmails: string[], agencyContext: any) {
+    if (!ls.secuencia?.activa || !agencyContext) return;
 
-    const agenciaId = ls.secuencia.agencia_id;
     const leadEmail = ls.lead?.email;
     const leadId = ls.lead?.id;
 
-    // ─── UNSUBSCRIBE CHECK — Skip silently, never send to opted-out leads ───
-    if (ls.lead?.unsubscribed === true) {
-        console.log(`[Drips] Lead ${leadEmail} is unsubscribed — skipping permanently.`);
-        // Mark sequence as completed so it stops appearing in future cycles
+    if (ls.lead?.unsubscribed === true || ls.lead?.email_rebotado === true) {
         await supabase.from('leads_secuencias').update({ estado: 'cancelada' }).eq('id', ls.id);
         return;
     }
 
-    // ─── BOUNCE CHECK — Never send to leads with invalid/bounced emails ───
-    // This guard protects against: manual bounces (Gmail), pre-webhook bounces, and
-    // any lead that was already marked before the handle-bounce webhook existed.
-    if (ls.lead?.email_rebotado === true) {
-        console.log(`[Drips] Lead ${leadEmail} has a bounced/invalid email — cancelling sequence permanently.`);
-        await supabase.from('leads_secuencias').update({ estado: 'cancelada' }).eq('id', ls.id);
-        return;
-    }
+    if (!leadEmail) return;
 
-    if (!leadEmail) {
-        console.log(`[Drips] Lead ${leadId} has no email — skipping.`);
-        return;
-    }
+    const config = agencyContext.config;
+    if (config['master_sequence_switch'] !== 'true') return;
 
-    // Load agency config
-    const { data: configData } = await supabase
-        .from('configuracion')
-        .select('clave, valor')
-        .eq('agencia_id', agenciaId);
-
-    const config: Record<string, string> = {};
-    configData?.forEach((r: any) => { config[r.clave] = r.valor });
-
-    // Check master switch
-    if (config['master_sequence_switch'] !== 'true') {
-        console.log(`[Drips] Agency ${agenciaId} master switch is OFF — skipping.`);
-        return;
-    }
-
-    // Resolve email engine
-    const finalResendKey = config['resend_api_key'] || globalResendKey;
-    const gmailAppPassword = config['gmail_app_password'] || '';
-    const provider = config['proveedor_email']
-        || (gmailAppPassword ? 'gmail' : finalResendKey ? 'resend' : '');
-
+    const provider = agencyContext.provider;
     if (!provider) {
-        console.log(`[Drips] Agency ${agenciaId} has no email provider configured.`);
-        failedEmails.push(`Agencia ${agenciaId}: No hay proveedor de email configurado (Gmail o Resend).`);
+        failedEmails.push(`Agencia ${agencyContext.id}: No hay proveedor configurado.`);
         return;
     }
 
-    if (provider === 'gmail' && !gmailAppPassword) {
+    if (provider === 'gmail' && !agencyContext.transporter) {
         failedEmails.push(`Lead ${leadEmail}: Motor Gmail sin Contraseña de Aplicación.`);
         return;
     }
-    if (provider === 'resend' && !finalResendKey) {
+    if (provider === 'resend' && !agencyContext.resendKey) {
         failedEmails.push(`Lead ${leadEmail}: Motor Resend sin API Key.`);
         return;
     }
 
-    // Resolve from address — CRITICAL: smtpUser must be raw email only
     const fromEmailRaw = config['email_remitente'] || 'noreply@agencia.com';
-    const fromEmailClean = extractEmail(fromEmailRaw); // strips "Name <email>" to just "email"
-    const agenciaNombre = config['nombre_visible'] || config['nombre_remitente'] || 'Tu Agencia';
-    const remitenteNombre = config['nombre_remitente'] || agenciaNombre;
-    const agencyUrl = config['url_web'] || '';
+    const fromEmailClean = extractEmail(fromEmailRaw);
+    const remitenteNombre = config['nombre_remitente'] || config['nombre_visible'] || 'Tu Agencia';
     const agencyPhone = config['telefono_agencia'] || config['whatsapp'] || '';
-    const logoUrl = config['logo_url'] || '';
-    const emailPreheader = config['email_preheader'] || '';
-    const primaryColor = config['color_marca'] || '#1a73e8';
 
-    // Gmail SMTP user: prefer explicit `gmail_user`, fallback to clean email
-    const smtpUser = config['gmail_user'] || fromEmailClean;
-
-    // Resolve which step to send
     const pasos = (ls.secuencia.pasos || []).sort((a: any, b: any) => a.dia_envio - b.dia_envio);
     if (pasos.length === 0) return;
 
@@ -482,7 +439,6 @@ async function processLead(ls: any, counter: { enviados: number }, failedEmails:
     const daysElapsed = Math.floor((Date.now() - assignDate) / (1000 * 60 * 60 * 24));
     const lastExecuted = ls.ultimo_paso_ejecutado || 0;
 
-    // Find the next eligible step
     let pasoAEnviar: any = null;
     for (const p of pasos) {
         if (p.dia_envio <= daysElapsed + 1 && p.dia_envio > lastExecuted) {
@@ -491,27 +447,53 @@ async function processLead(ls: any, counter: { enviados: number }, failedEmails:
         }
     }
 
-    // No step eligible yet
     if (!pasoAEnviar) {
-        // If all steps done, mark complete
         if (lastExecuted >= pasos[pasos.length - 1].dia_envio) {
             await supabase.from('leads_secuencias').update({ estado: 'completada' }).eq('id', ls.id);
         }
         return;
     }
 
-    // SINGLE anti-spam check: 8h cooldown between consecutive steps
-    // This prevents double-sends if the cron runs twice within the same day,
-    // but does NOT block legitimate next-day steps.
     if (lastExecuted > 0 && ls.lead?.ultimo_contacto) {
         const hoursSince = (Date.now() - new Date(ls.lead.ultimo_contacto).getTime()) / (1000 * 60 * 60);
-        if (hoursSince < 8) {
-            console.log(`[Drips] Skipping step ${pasoAEnviar.dia_envio} for ${leadEmail} — last contact ${Math.round(hoursSince)}h ago (< 8h cooldown).`);
-            return;
-        }
+        if (hoursSince < 8) return;
     }
 
-    // Handle step without template (skip step cleanly)
+    // ============================================================
+    // WHATSAPP OMNICHANNEL BRANCH
+    // ============================================================
+    const tipoMensaje = pasoAEnviar.tipo_mensaje || 'email';
+    if (tipoMensaje === 'whatsapp') {
+        console.log(`[Drips] WhatsApp branch for lead ${leadId} step ${pasoAEnviar.dia_envio}. Architecture ready.`);
+        // TODO: Replace this stub with WhatsApp Cloud API call when credentials are configured.
+        // POST https://graph.facebook.com/v18.0/{phone_number_id}/messages
+        // Body: { messaging_product: 'whatsapp', to: leadPhone, type: 'template', template: { name, language } }
+        const waSuccess = false; // stub — flip to true after WA credentials are set up
+        const waLogId = crypto.randomUUID();
+        if (waSuccess) {
+            counter.enviados++;
+            await supabase.from('email_log').insert({
+                id: waLogId,
+                agencia_id: agencyContext.id,
+                lead_id: leadId,
+                tipo: 'secuencia',
+                canal: 'whatsapp',
+                email_enviado: ls.lead.telefono || leadEmail,
+                asunto: pasoAEnviar.whatsapp_template_name || 'wa_template',
+                estado: 'enviado'
+            });
+            await supabase.from('leads').update({ ultimo_contacto: new Date().toISOString() }).eq('id', leadId);
+            const isLast = pasoAEnviar.dia_envio === pasos[pasos.length - 1].dia_envio;
+            await supabase.from('leads_secuencias').update({
+                ultimo_paso_ejecutado: pasoAEnviar.dia_envio,
+                estado: isLast ? 'completada' : 'en_progreso'
+            }).eq('id', ls.id);
+        } else {
+            console.warn(`[Drips] WhatsApp stub for ${leadId}: WA credentials not yet configured, skipping step.`);
+        }
+        return;
+    }
+
     if (!pasoAEnviar.plantilla_email_id) {
         const isLast = pasoAEnviar.dia_envio === pasos[pasos.length - 1].dia_envio;
         await supabase.from('leads_secuencias').update({
@@ -521,23 +503,16 @@ async function processLead(ls: any, counter: { enviados: number }, failedEmails:
         return;
     }
 
-    // Load email template
     const { data: tpl, error: tplErr } = await supabase
-        .from('plantillas_email')
-        .select('*')
-        .eq('id', pasoAEnviar.plantilla_email_id)
-        .single();
+        .from('plantillas_email').select('*').eq('id', pasoAEnviar.plantilla_email_id).single();
 
     if (tplErr || !tpl) {
-        console.error(`[Drips] Template ${pasoAEnviar.plantilla_email_id} not found:`, tplErr?.message);
         failedEmails.push(`Lead ${leadEmail}: Plantilla ${pasoAEnviar.plantilla_email_id} no encontrada.`);
         return;
     }
 
-    // Render variables into body & subject
     const leadNombre = ls.lead.nombre || 'Viajero';
-    const leadTour = ls.lead.tour_nombre || 'tu tour';
-
+    const activeTourName = tpl.origen || ls.lead.tour_nombre || ls.lead.form_name || 'tu tour';
     const socialProof = tpl.idioma === 'EN'
         ? '<div style="background:#f4f4f5;padding:12px;border-left:4px solid #facc15;font-style:italic">"An unforgettable experience, totally recommended!" - TripAdvisor</div>'
         : '<div style="background:#f4f4f5;padding:12px;border-left:4px solid #facc15;font-style:italic">"Una experiencia inolvidable, 100% recomendado" - TripAdvisor</div>';
@@ -547,8 +522,8 @@ async function processLead(ls: any, counter: { enviados: number }, failedEmails:
 
     const replaceVars = (s: string) => s
         .replace(/{nombre}/gi, leadNombre)
-        .replace(/{tour}/gi, leadTour)
-        .replace(/{agencia}/gi, agenciaNombre)
+        .replace(/{tour}/gi, activeTourName)
+        .replace(/{agencia}/gi, config['nombre_visible'] || 'Agencia')
         .replace(/{remitente}/gi, remitenteNombre)
         .replace(/{email}/gi, fromEmailClean)
         .replace(/{telefono}/gi, agencyPhone)
@@ -557,41 +532,36 @@ async function processLead(ls: any, counter: { enviados: number }, failedEmails:
         .replace(/{mesagotado}/gi, mesAgotado)
         .replace(/{social_proof}/gi, socialProof);
 
-    const bodyContent = replaceVars(tpl.contenido_html || '');
-    const emailSubject = replaceVars(tpl.asunto || `Mensaje de ${agenciaNombre}`);
-
-    // Generate secure unsubscribe URL for this lead
+    const emailSubject = replaceVars(tpl.asunto || `Mensaje de ${remitenteNombre}`);
+    
+    // Genereate specific ID for tracking this exact email send
+    const logId = crypto.randomUUID();
+    const trackingPixel = `<img src="${Deno.env.get('SUPABASE_URL')}/functions/v1/track-open?logId=${logId}" width="1" height="1" alt="" style="display:none; visibility:hidden;" />`;
+    const bodyContent = replaceVars(tpl.contenido_html || '') + trackingPixel;
+    
     const unsubToken = await generateUnsubToken(leadId);
-    const projectUrl = Deno.env.get('SUPABASE_URL') || '';
-    const unsubscribeUrl = projectUrl
-        ? `${projectUrl}/functions/v1/unsubscribe?id=${leadId}&token=${unsubToken}`
-        : '';
+    const unsubscribeUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/unsubscribe?id=${leadId}&token=${unsubToken}`;
 
     const wrappedHtml = wrapEmailTemplate({
         body: bodyContent,
-        agencyName: agenciaNombre,
-        agencyUrl,
+        agencyName: config['nombre_visible'] || remitenteNombre,
+        agencyUrl: config['url_web'] || '',
         agencyEmail: fromEmailClean,
         agencyPhone,
-        logoUrl,
-        previewText: emailPreheader,
-        primaryColor,
+        logoUrl: config['logo_url'] || '',
+        previewText: config['email_preheader'] || '',
+        primaryColor: config['color_marca'] || '#1a73e8',
         unsubscribeUrl
     });
 
     console.log(`[Drips] Sending step ${pasoAEnviar.dia_envio} to ${leadEmail} via ${provider}`);
 
-    // ─── SEND ───
     let engineSuccess = false;
     let errorMessage = '';
 
     try {
         if (provider === 'gmail') {
-            const transporter = nodemailer.createTransport({
-                service: 'gmail',
-                auth: { user: smtpUser, pass: gmailAppPassword },
-            });
-            const info = await transporter.sendMail({
+            const info = await agencyContext.transporter.sendMail({
                 from: `${remitenteNombre} <${fromEmailClean}>`,
                 to: [leadEmail],
                 subject: emailSubject,
@@ -599,14 +569,10 @@ async function processLead(ls: any, counter: { enviados: number }, failedEmails:
             });
             engineSuccess = !!info.messageId;
             if (engineSuccess) console.log(`[Drips] Gmail sent: ${info.messageId}`);
-
         } else if (provider === 'resend') {
             const resendRes = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${finalResendKey}`,
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Authorization': `Bearer ${agencyContext.resendKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     from: `${remitenteNombre} <${fromEmailClean}>`,
                     to: [leadEmail],
@@ -614,31 +580,31 @@ async function processLead(ls: any, counter: { enviados: number }, failedEmails:
                     html: wrappedHtml
                 })
             });
-            if (resendRes.ok) {
-                engineSuccess = true;
-            } else {
-                errorMessage = await resendRes.text();
-            }
+            if (resendRes.ok) engineSuccess = true;
+            else errorMessage = await resendRes.text();
         }
     } catch (e: any) {
         errorMessage = e.message;
+        // Re-throw if it's a critical auth error so the loop aborts for this agency
+        if (errorMessage.includes('Invalid login') || errorMessage.includes('Application-specific password required')) {
+            throw e;
+        }
     }
 
-    // ─── POST-SEND STATE UPDATE ───
     const isLast = pasoAEnviar.dia_envio === pasos[pasos.length - 1].dia_envio;
-
     if (engineSuccess) {
         counter.enviados++;
-
-        await supabase.from('email_log').insert({
-            agencia_id: agenciaId,
+        const { error: logErr } = await supabase.from('email_log').insert({
+            id: logId,
+            agencia_id: agencyContext.id,
             lead_id: leadId,
             tipo: 'secuencia',
+            canal: 'email',
             email_enviado: leadEmail,
             asunto: emailSubject,
-            cuerpo: wrappedHtml,
             estado: 'enviado'
         });
+        if (logErr) console.error(`[Drips] DB Error (email_log):`, logErr.message);
 
         const leadUpdate: Record<string, any> = { ultimo_contacto: new Date().toISOString() };
         if (ls.lead.estado === 'nuevo') leadUpdate.estado = 'contactado';
@@ -650,7 +616,37 @@ async function processLead(ls: any, counter: { enviados: number }, failedEmails:
         }).eq('id', ls.id);
 
     } else {
-        failedEmails.push(`Error al enviar a ${leadEmail} (paso ${pasoAEnviar.dia_envio}): ${errorMessage}`);
-        console.error(`[Drips] Send failed for ${leadEmail}:`, errorMessage);
+        const errorMsg = errorMessage || 'Error desconocido al enviar';
+        failedEmails.push(`Error al enviar a ${leadEmail} (paso ${pasoAEnviar.dia_envio}): ${errorMsg}`);
+        console.error(`[Drips] Send failed for ${leadEmail}:`, errorMsg);
+
+        // ── CRITICAL FIX: Log the failure to email_log so Radar can show it ──
+        await supabase.from('email_log').insert({
+            id: logId,
+            agencia_id: agencyContext.id,
+            lead_id: leadId,
+            tipo: 'secuencia',
+            canal: 'email',
+            email_enviado: leadEmail,
+            asunto: emailSubject,
+            estado: 'fallido',
+            cuerpo: errorMsg.substring(0, 1000),
+        });
+
+        // ── HARD BOUNCE DETECTION: 550/5.1.x = address doesn't exist ──
+        // These are permanent failures — no point retrying ever.
+        const isHardBounce = /550|5\.1\.[12]|NoSuchUser|user.?unknown|does not exist|can't receive mail|invalid.*address|no such/i.test(errorMsg);
+        if (isHardBounce) {
+            console.log(`[Drips] Hard bounce SMTP detected for ${leadEmail} — marking as correo_falso`);
+            await Promise.allSettled([
+                supabase.from('leads').update({
+                    email_rebotado: true,
+                    estado: 'correo_falso',
+                    motivo_rebote: `Hard Bounce SMTP: ${errorMsg.substring(0, 250)}`,
+                    fecha_rebote: new Date().toISOString(),
+                }).eq('id', leadId),
+                supabase.from('leads_secuencias').update({ estado: 'cancelada' }).eq('id', ls.id),
+            ]);
+        }
     }
 }

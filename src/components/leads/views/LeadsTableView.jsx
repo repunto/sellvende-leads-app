@@ -12,6 +12,7 @@ export default function LeadsTableView({
     setSelectedLeads,
     paginated,
     toggleSelectAll,
+    cargandoSeleccionMassiva,
     toggleSelectLead,
     openDetailPanel,
     getColdLevel,
@@ -24,6 +25,7 @@ export default function LeadsTableView({
     handleWhatsAppClick,
     openForm,
     handleDelete,
+    totalLeads,
     totalPages,
     currentPage,
     setCurrentPage
@@ -32,31 +34,39 @@ export default function LeadsTableView({
         <div className="table-container">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '0 4px' }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                    📊 <strong>{filtered.length}</strong> leads en total
-                    {filtered.length !== leads.length && <span> (de {leads.length})</span>}
+                    📊 <strong>{totalLeads ?? leads.length}</strong> leads en total
+                    {cargandoSeleccionMassiva && <span style={{ marginLeft: 8, color: 'var(--color-primary)' }}>⏳ Seleccionando todos...</span>}
                 </span>
                 <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                    Mostrando {startIdx + 1}–{Math.min(startIdx + LEADS_PER_PAGE, filtered.length)}
+                    Mostrando {startIdx + 1}–{Math.min(startIdx + LEADS_PER_PAGE, startIdx + leads.length)}
                 </span>
             </div>
 
-            {selectedLeads.size > 0 && (
-                <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', color: 'var(--color-text)', border: '1px solid #f59e0b', borderBottom: 'none', borderTopLeftRadius: 8, borderTopRightRadius: 8, transition: 'all 0.3s' }}>
-                    <div>
-                        ✨ Has seleccionado <strong>{selectedLeads.size}</strong> leads.
-                        {selectedLeads.size >= filtered.filter(l => l.email).length && ' Listos para la Secuencia Masiva.'}
+            {selectedLeads.size > 0 && (() => {
+                const excluded = (totalLeads ?? 0) - selectedLeads.size
+                return (
+                    <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', color: 'var(--color-text)', border: '1px solid #f59e0b', borderBottom: 'none', borderTopLeftRadius: 8, borderTopRightRadius: 8, transition: 'all 0.3s' }}>
+                        <div>
+                            ✨ <strong>{selectedLeads.size}</strong> de <strong>{totalLeads ?? selectedLeads.size}</strong> leads seleccionados — Listos para la Secuencia Masiva.
+                            {excluded > 0 && (
+                                <span style={{ marginLeft: 6, color: 'var(--color-text-secondary)', fontWeight: 400 }}>
+                                    ({excluded} excluido{excluded !== 1 ? 's' : ''}: sin email o dados de baja)
+                                </span>
+                            )}
+                        </div>
+                        <span style={{ color: '#ef4444', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }} onClick={() => setSelectedLeads(new Set())}>Borrar selección</span>
                     </div>
-                    <span style={{ color: '#ef4444', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }} onClick={() => setSelectedLeads(new Set())}>Borrar selección</span>
-                </div>
-            )}
+                )
+            })()}
 
             <table className="data-table" style={{ borderTopLeftRadius: selectedLeads.size > 0 ? 0 : '' }}>
                 <thead>
                     <tr>
                         <th style={{ width: 45, textAlign: 'center' }}>
                             <input type="checkbox" onChange={toggleSelectAll}
-                                title="Seleccionar TODOS los leads"
-                                checked={filtered.filter(l => l.email).length > 0 && filtered.filter(l => l.email).every(l => selectedLeads.has(l.id))} />
+                                title="Seleccionar TODOS los leads de todas las páginas"
+                                disabled={cargandoSeleccionMassiva}
+                                checked={selectedLeads.size > 0} />
                         </th>
                         <th style={{ width: 45, textAlign: 'center' }}>#</th>
                         <th>Nombre</th>
@@ -143,24 +153,40 @@ export default function LeadsTableView({
                                             }}>{emailCounts[lead.id]}</span>
                                         )}
                                     </button>
-                                    {sequenceEnrollments[lead.id] && sequenceEnrollments[lead.id].estado === 'en_progreso' && (
-                                        <div 
-                                            onClick={(e) => { e.stopPropagation(); handleStopSequence(lead.id) }}
-                                            title={`🚀 Playbook: ${sequenceEnrollments[lead.id].secuencias_marketing?.nombre || 'Activo'}\nPasos Completados: ${sequenceEnrollments[lead.id].ultimo_paso_ejecutado || 0} de ${secuencias.find(s => s.id === sequenceEnrollments[lead.id].secuencia_id)?.pasos?.length || '?'}\n\n🛑 Clic para DETENER esta secuencia permanentemente.`}
-                                            style={{
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6',
-                                                padding: '0 8px', borderRadius: 12, height: 28, fontSize: '0.9rem',
-                                                border: '1px solid rgba(139, 92, 246, 0.3)', cursor: 'pointer',
-                                                boxShadow: '0 0 10px rgba(139, 92, 246, 0.3)',
-                                                transition: 'all 0.2s ease', minWidth: 32
-                                            }}
-                                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)'; e.currentTarget.innerHTML = '🛑' }}
-                                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)'; e.currentTarget.style.color = '#8b5cf6'; e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.3)'; e.currentTarget.innerHTML = '🚀' }}
-                                        >
-                                            🚀
-                                        </div>
-                                    )}
+                                    {sequenceEnrollments[lead.id] && sequenceEnrollments[lead.id].estado === 'en_progreso' && (() => {
+                                        const enr = sequenceEnrollments[lead.id]
+                                        const paso = enr.ultimo_paso_ejecutado || 0
+                                        const seqName = enr.secuencias_marketing?.nombre || 'Playbook'
+                                        const totalPasos = secuencias.find(s => s.id === enr.secuencia_id)?.pasos?.length || '?'
+                                        const hasSent = paso >= 1
+                                        const tooltipText = hasSent
+                                            ? `🚀 Secuencia: ${seqName}\n✅ Emails enviados: ${paso} de ${totalPasos}\n\n🛑 Clic para DETENER esta secuencia permanentemente.`
+                                            : `🚀 Secuencia: ${seqName}\n⏳ Enrolado — esperando envío del primer email\nPasos ejecutados: 0 de ${totalPasos}\n\n🛑 Clic para DETENER esta secuencia permanentemente.`
+                                        return (
+                                            <div
+                                                onClick={(e) => { e.stopPropagation(); handleStopSequence(lead.id) }}
+                                                title={tooltipText}
+                                                style={{
+                                                    position: 'relative',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    background: hasSent ? 'rgba(16, 185, 129, 0.15)' : 'rgba(139, 92, 246, 0.15)',
+                                                    color: hasSent ? '#10b981' : '#8b5cf6',
+                                                    padding: '0 8px', borderRadius: 12, height: 28, fontSize: '0.9rem',
+                                                    border: `1px solid ${hasSent ? 'rgba(16, 185, 129, 0.35)' : 'rgba(139, 92, 246, 0.3)'}`,
+                                                    cursor: 'pointer',
+                                                    boxShadow: hasSent ? '0 0 8px rgba(16,185,129,0.25)' : '0 0 10px rgba(139, 92, 246, 0.3)',
+                                                    transition: 'all 0.2s ease', minWidth: 32, gap: 3
+                                                }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)'; e.currentTarget.querySelector('.rocket-label').textContent = '🛑' }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = hasSent ? 'rgba(16, 185, 129, 0.15)' : 'rgba(139, 92, 246, 0.15)'; e.currentTarget.style.color = hasSent ? '#10b981' : '#8b5cf6'; e.currentTarget.style.borderColor = hasSent ? 'rgba(16,185,129,0.35)' : 'rgba(139, 92, 246, 0.3)'; e.currentTarget.querySelector('.rocket-label').textContent = '🚀' }}
+                                            >
+                                                <span className="rocket-label">🚀</span>
+                                                {hasSent && (
+                                                    <span style={{ fontSize: '0.65rem', fontWeight: 700, lineHeight: 1 }}>{paso}</span>
+                                                )}
+                                            </div>
+                                        )
+                                    })()}
                                     <Link
                                         to="/reservas"
                                         state={{ convertLead: lead }}
@@ -192,26 +218,114 @@ export default function LeadsTableView({
                     ))}
                 </tbody>
             </table>
-            {totalPages > 1 && (
-                <div style={{
-                    display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12,
-                    padding: '16px 0', borderTop: '1px solid var(--color-border)', marginTop: 8
-                }}>
-                    <button
-                        className="btn btn-secondary btn-sm"
-                        disabled={currentPage <= 1}
-                        onClick={() => setCurrentPage(p => p - 1)}
-                    >← Anterior</button>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                        Página <strong>{currentPage}</strong> de <strong>{totalPages}</strong>
-                    </span>
-                    <button
-                        className="btn btn-secondary btn-sm"
-                        disabled={currentPage >= totalPages}
-                        onClick={() => setCurrentPage(p => p + 1)}
-                    >Siguiente →</button>
-                </div>
-            )}
+            {totalPages > 1 && (() => {
+                // Build smart page range: always show [1] ... [cur-2 cur-1 cur cur+1 cur+2] ... [last]
+                const delta = 2
+                const range = []
+                for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+                    range.push(i)
+                }
+                const pages = []
+                pages.push(1)
+                if (range[0] > 2) pages.push('...')
+                pages.push(...range)
+                if (range[range.length - 1] < totalPages - 1) pages.push('...')
+                if (totalPages > 1) pages.push(totalPages)
+
+                const btnBase = {
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    height: 32, minWidth: 32, padding: '0 8px', borderRadius: 7,
+                    border: '1px solid var(--color-border)',
+                    background: 'var(--color-bg-card)', color: 'var(--color-text)',
+                    fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer',
+                    transition: 'all 0.15s ease', userSelect: 'none',
+                }
+                const btnDisabled = { opacity: 0.35, cursor: 'not-allowed', pointerEvents: 'none' }
+                const btnActive = {
+                    background: 'var(--color-primary)', color: '#fff',
+                    border: '1px solid var(--color-primary)',
+                    boxShadow: '0 0 12px var(--color-primary-glow, rgba(99,102,241,0.4))',
+                    fontWeight: 700,
+                }
+
+                return (
+                    <div style={{
+                        display: 'flex', justifyContent: 'center', alignItems: 'center',
+                        gap: 4, padding: '14px 0 4px',
+                        borderTop: '1px solid var(--color-border)', marginTop: 8, flexWrap: 'wrap'
+                    }}>
+                        {/* ← Inicio */}
+                        <button
+                            style={{ ...btnBase, ...(currentPage <= 1 ? btnDisabled : {}) }}
+                            disabled={currentPage <= 1}
+                            onClick={() => setCurrentPage(1)}
+                            title="Primera página"
+                        >⟨⟨</button>
+
+                        {/* ← Anterior */}
+                        <button
+                            style={{ ...btnBase, padding: '0 12px', ...(currentPage <= 1 ? btnDisabled : {}) }}
+                            disabled={currentPage <= 1}
+                            onClick={() => setCurrentPage(p => p - 1)}
+                            title="Página anterior"
+                        >← Ant.</button>
+
+                        {/* Smart page numbers */}
+                        {pages.map((p, i) =>
+                            p === '...'
+                                ? <span key={`ellipsis-${i}`} style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', padding: '0 2px', letterSpacing: 1 }}>…</span>
+                                : <button
+                                    key={p}
+                                    style={{ ...btnBase, ...(p === currentPage ? btnActive : {}) }}
+                                    onClick={() => setCurrentPage(p)}
+                                    title={`Ir a página ${p}`}
+                                >{p}</button>
+                        )}
+
+                        {/* Siguiente → */}
+                        <button
+                            style={{ ...btnBase, padding: '0 12px', ...(currentPage >= totalPages ? btnDisabled : {}) }}
+                            disabled={currentPage >= totalPages}
+                            onClick={() => setCurrentPage(p => p + 1)}
+                            title="Página siguiente"
+                        >Sig. →</button>
+
+                        {/* → Fin */}
+                        <button
+                            style={{ ...btnBase, ...(currentPage >= totalPages ? btnDisabled : {}) }}
+                            disabled={currentPage >= totalPages}
+                            onClick={() => setCurrentPage(totalPages)}
+                            title="Última página"
+                        >⟩⟩</button>
+
+                        {/* Salto directo */}
+                        {totalPages > 5 && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 8, fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                                Ir a
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={totalPages}
+                                    defaultValue={currentPage}
+                                    key={currentPage}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            const val = parseInt(e.target.value)
+                                            if (val >= 1 && val <= totalPages) setCurrentPage(val)
+                                        }
+                                    }}
+                                    style={{
+                                        width: 46, height: 30, textAlign: 'center',
+                                        borderRadius: 7, border: '1px solid var(--color-border)',
+                                        background: 'var(--color-bg-card)', color: 'var(--color-text)',
+                                        fontSize: '0.82rem', outline: 'none', padding: '0 4px',
+                                    }}
+                                />
+                            </span>
+                        )}
+                    </div>
+                )
+            })()}
         </div>
     )
 }

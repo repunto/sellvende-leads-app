@@ -5,7 +5,7 @@ const LeadsToolbar = React.memo(({
     search, setSearch, 
     filtroEstado, setFiltroEstado, 
     filtroFormulario, setFiltroFormulario, 
-    leads, syncMetaLeads, syncing, deleteAllMetaLeads, openForm, 
+    leads, globalForms, syncMetaLeads, syncing, deleteAllMetaLeads, openForm, 
     dateFrom, setDateFrom, 
     dateTo, setDateTo, 
     selectedLeads, filtered, 
@@ -13,14 +13,14 @@ const LeadsToolbar = React.memo(({
     viewMode, setViewMode
 }) => {
 
-    const formsList = useMemo(() => {
+    const formsList = globalForms && globalForms.length > 0 ? globalForms : useMemo(() => {
         const uniqueForms = new Set(leads.map(l => {
             let f = l.form_name || l.tour_nombre || '';
             if (f.includes(' - ')) f = f.split(' - ')[0].trim();
             return f;
-        }).filter(f => f && !f.toLowerCase().includes('valle sagrado')));
+        }).filter(Boolean));
         return [...uniqueForms].sort()
-    }, [leads])
+    }, [leads, globalForms]);
 
     return (
         <>

@@ -181,11 +181,52 @@ export function useLeadSequences({
     }, [detailLead, showToast, setConfirmDialog])
 
     // ── Mass sequence enrollment (confirm wrapper) ──
-    const handleMassSequenceEnroll = useCallback((selectedLeads) => {
+    const handleMassSequenceEnroll = useCallback((selectedLeads, loadedLeads = []) => {
         if (!selectedMassSequenceId) {
             showToast('Selecciona una secuencia primero.', 'error')
             return
         }
+
+        const targetSeqInfo = secuencias.find(s => s.id === selectedMassSequenceId)
+        const matchString = (targetSeqInfo?.tour_match || '').toLowerCase().trim()
+        
+        let hasCollision = false;
+        let collisionDetails = [];
+
+        if (matchString && matchString !== 'general') {
+            const matchTerms = matchString.split(',').map(s => s.trim()).filter(Boolean);
+            
+            loadedLeads.forEach(lead => {
+                if (selectedLeads.has(lead.id)) {
+                    let lTour = (lead.tour_nombre || lead.form_name || '').toLowerCase();
+                    if(lTour.includes(' - ')) lTour = lTour.split(' - ')[0].trim();
+
+                    if (lTour !== '') {
+                        const matchesAny = matchTerms.some(term => lTour.includes(term));
+                        if (!matchesAny) {
+                            hasCollision = true;
+                            collisionDetails.push(lead.tour_nombre || lead.form_name || 'Desconocido');
+                        }
+                    }
+                }
+            });
+        }
+
+        if (hasCollision) {
+            const uniqueCollisions = [...new Set(collisionDetails)].slice(0, 3).join(', ');
+            setConfirmDialog({
+                title: '⚠️ ALERTA DE CROSS-TOUR',
+                message: `Estás a punto de inscribir leads que solicitaron "${uniqueCollisions}" en la secuencia "${targetSeqInfo?.nombre}" (Target: "${targetSeqInfo?.tour_match}"). Esto enviará correos equivocados. ¿Estás ABSOLUTAMENTE seguro de continuar?`,
+                danger: true,
+                confirmLabel: `🚨 Sí, Enrolar ignorando error`,
+                onConfirm: () => {
+                    setConfirmDialog(null)
+                    _doMassSequenceEnroll(selectedLeads)
+                }
+            });
+            return;
+        }
+
         setConfirmDialog({
             title: 'Enrolamiento Masivo',
             message: `¿Enrolar a ${selectedLeads.size} leads en esta secuencia? Recibirán el primer correo casi de inmediato si el Motor está activo.`,
@@ -196,7 +237,7 @@ export function useLeadSequences({
                 _doMassSequenceEnroll(selectedLeads)
             }
         })
-    }, [selectedMassSequenceId, showToast, setConfirmDialog]) // eslint-disable-line
+    }, [selectedMassSequenceId, secuencias, showToast, setConfirmDialog]) // eslint-disable-line
 
     // ── Internal: perform the actual mass enrollment ──
     const _doMassSequenceEnroll = useCallback(async (selectedLeadIds) => {
@@ -236,14 +277,9 @@ export function useLeadSequences({
             // CRITICAL: Fire process-drips BEFORE the cron kicks in
             await supabase.functions.invoke('process-drips')
             
-            // Update local Leads state so UI reflects contactado and latest changes
-            const updateFields = { ultimo_contacto: new Date().toISOString() }
-            setLeads(prev => prev.map(l => {
-                if (!selectedLeadIds.has(l.id)) return l
-                return l.estado === 'nuevo'
-                    ? { ...l, ...updateFields, estado: 'contactado' }
-                    : { ...l, ...updateFields }
-            }))
+            // Note: We deliberately do NOT update ultimo_contacto or estado locally here anymore.
+            // The real-time WebSockets (useMetaSync) will listen for the actual dispatch confirmation
+            // from the 'process-drips' engine and naturally update the React UI, thereby guaranteeing integrity.
 
             showToast(`✅ ${selectedLeadIds.size} leads enrolados y primer correo enviado.`, 'success')
             setShowMassSequenceModal(false)

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import CommandPalette from './CommandPalette'
 
 import { LayoutDashboard, Users, Ticket, CalendarDays, Map, Package, Tag, TrendingUp, Users as UsersIcon, Settings, LogOut, Activity } from 'lucide-react'
 
@@ -129,6 +130,7 @@ export default function Layout({ children }) {
             <main className="main-content">
                 {children}
             </main>
+            <CommandPalette />
         </div>
     )
 }

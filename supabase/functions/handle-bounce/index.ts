@@ -168,15 +168,21 @@ serve(async (req: Request) => {
         const leadId    = lead.id
         const agenciaId = lead.agencia_id
 
+        const isSoftBounce = isBounce && data?.bounce_type === 'soft'
+
         // 1. Mark lead as bounced
+        const leadUpdate: Record<string, any> = {
+            email_rebotado: true,
+            fecha_rebote:   new Date().toISOString(),
+            motivo_rebote:  motivoRaw,
+        }
+        if (!isSoftBounce) {
+            leadUpdate.estado = 'correo_falso'
+        }
+
         const { error: updateErr } = await supabase
             .from('leads')
-            .update({
-                email_rebotado: true,
-                fecha_rebote:   new Date().toISOString(),
-                motivo_rebote:  motivoRaw,
-                estado:         'correo_falso',
-            })
+            .update(leadUpdate)
             .eq('id', leadId)
 
         if (updateErr) {
@@ -184,15 +190,25 @@ serve(async (req: Request) => {
             continue
         }
 
-        // 2. Cancel all active sequences for this lead
-        const { error: seqErr } = await supabase
-            .from('leads_secuencias')
-            .update({ estado: 'cancelada' })
-            .eq('lead_id', leadId)
-            .in('estado', ['en_progreso', 'pausado'])
+        // 2. Action on sequences
+        if (!isSoftBounce) {
+            // Cancel all active sequences for hard bounce/complaint
+            const { error: seqErr } = await supabase
+                .from('leads_secuencias')
+                .update({ estado: 'cancelada' })
+                .eq('lead_id', leadId)
+                .in('estado', ['en_progreso', 'pausado'])
 
-        if (seqErr) {
-            console.warn(`[Bounce] Could not cancel sequences for lead ${leadId}:`, seqErr.message)
+            if (seqErr) console.warn(`[Bounce] Could not cancel sequences for lead ${leadId}:`, seqErr.message)
+        } else {
+            // Pause sequences for soft bounce (e.g. inbox full)
+            const { error: seqErr } = await supabase
+                .from('leads_secuencias')
+                .update({ estado: 'pausado' })
+                .eq('lead_id', leadId)
+                .in('estado', ['en_progreso'])
+            
+            if (seqErr) console.warn(`[Bounce] Could not pause sequences for lead ${leadId}:`, seqErr.message)
         }
 
         // 3. Log the bounce in email_log

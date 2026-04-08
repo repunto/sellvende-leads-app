@@ -15,14 +15,15 @@ const SOCIAL_PROOF_EMAIL = {
 }
 
 /** Build personalized body and subject from raw template + lead context */
-function buildEmailContent({ rawHtml, rawSubject, lead, config, agencyName, senderName }) {
+function buildEmailContent({ rawHtml, rawSubject, lead, config, agencyName, senderName, tplOrigen }) {
     const isEN = (lead.idioma || '').toUpperCase() === 'EN'
     const socialProof = isEN ? SOCIAL_PROOF_EMAIL.EN : SOCIAL_PROOF_EMAIL.ES
     const fromEmail = config['email_remitente'] || ''
+    const activeTourName = tplOrigen || lead.tour_nombre || lead.form_name || 'tu vacación'
 
     const body = rawHtml
         .replace(/{nombre}/gi, lead.nombre || '')
-        .replace(/{tour}/gi, lead.tour_nombre || '')
+        .replace(/{tour}/gi, activeTourName)
         .replace(/{email}/gi, fromEmail)
         .replace(/{telefono}/gi, config['telefono_agencia'] || config['whatsapp'] || '')
         .replace(/{agencia}/gi, agencyName)
@@ -34,7 +35,7 @@ function buildEmailContent({ rawHtml, rawSubject, lead, config, agencyName, send
 
     const subject = rawSubject
         .replace(/{nombre}/gi, lead.nombre || '')
-        .replace(/{tour}/gi, lead.tour_nombre || '')
+        .replace(/{tour}/gi, activeTourName)
         .replace(/{fechaviaje}/gi, formatTemporada(lead.temporada))
         .replace(/{fecha}/gi, formatTemporada(lead.temporada))
         .replace(/{mesagotado}/gi, mesAgotado)
@@ -193,11 +194,14 @@ export function useLeadEmail({
                 return
             }
 
+            const template = emailTemplates.find(t => t.id === selectedEmailTemplate)
+            const tplOrigen = template?.origen || ''
+
             const lead = individualEmailLead
             const { body, subject } = buildEmailContent({
                 rawHtml: emailBody || '',
                 rawSubject: emailSubject,
-                lead, config, agencyName, senderName
+                lead, config, agencyName, senderName, tplOrigen
             })
 
             const { data: result, error: invokeError } = await supabase.functions.invoke('resend-email', {
@@ -361,10 +365,13 @@ export function useLeadEmail({
             for (let i = 0; i < selected.length; i++) {
                 const lead = selected[i]
                 try {
+                    const template = emailTemplates.find(t => t.id === selectedEmailTemplate)
+                    const tplOrigen = template?.origen || ''
+
                     const { body, subject } = buildEmailContent({
                         rawHtml: emailBody || '',
                         rawSubject: emailSubject,
-                        lead, config, agencyName, senderName
+                        lead, config, agencyName, senderName, tplOrigen
                     })
 
                     const { data: result, error: invokeError } = await supabase.functions.invoke('resend-email', {

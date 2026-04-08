@@ -337,7 +337,7 @@ export default function MarketingPage() {
         setLoadingRoas(true)
         const [invResp, leadsResp, resResp] = await Promise.all([
             supabase.from('inversion_marketing').select('*').eq('agencia_id', agencia.id).order('anio', { ascending: false }).order('mes', { ascending: false }),
-            supabase.from('leads').select('id, origen, created_at').eq('agencia_id', agencia.id),
+            supabase.from('leads').select('id, origen, campaign_name, created_at').eq('agencia_id', agencia.id),
             supabase.from('reservas').select('id, lead_id, precio_venta, estado').eq('agencia_id', agencia.id).in('estado', ['confirmada', 'completada', 'pagada'])
         ])
 
@@ -348,7 +348,9 @@ export default function MarketingPage() {
         const computed = inv.map(i => {
             const leadsFromInv = leads.filter(l => {
                 const dt = new Date(l.created_at)
-                return dt.getMonth() + 1 === i.mes && dt.getFullYear() === i.anio && l.origen?.toLowerCase().trim() === i.campana_origen.toLowerCase().trim()
+                const isSameDate = dt.getMonth() + 1 === i.mes && dt.getFullYear() === i.anio
+                const matchInv = (name) => name && i.campana_origen && name.toLowerCase().trim() === i.campana_origen.toLowerCase().trim()
+                return isSameDate && (matchInv(l.campaign_name) || matchInv(l.origen))
             })
             const numLeads = leadsFromInv.length
             

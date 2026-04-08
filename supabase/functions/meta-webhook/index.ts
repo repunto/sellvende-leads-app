@@ -89,20 +89,34 @@ serve(async (req) => {
 
             if (body.object === 'page') {
                 const entries = body.entry || []
+                
+                let totalEnrolled = false
 
                 for (const entry of entries) {
                     const pageId = entry.id
                     const changes = entry.changes || []
 
+                    const leadPromises = []
                     for (const change of changes) {
                         if (change.field === 'leadgen') {
                             const leadgenId = change.value.leadgen_id
                             const formId = change.value.form_id
-
-                            await processNewLead(pageId, formId, leadgenId)
+                            leadPromises.push(processNewLead(pageId, formId, leadgenId))
                         }
                     }
+                    const results = await Promise.allSettled(leadPromises)
+                    if (results.some(r => r.status === 'fulfilled' && r.value === true)) {
+                        totalEnrolled = true
+                    }
                 }
+
+                // If any lead was assigned a sequence, invoke the drip engine exactly once
+                if (totalEnrolled) {
+                    supabase.functions.invoke('process-drips').catch(e => {
+                        console.error('[Automation] Failed to trigger process-drips batch:', e)
+                    })
+                }
+
                 // Respond with 200 OK immediately so Meta stops retrying
                 return new Response('EVENT_RECEIVED', { status: 200 })
             } else {
@@ -164,7 +178,7 @@ async function processNewLead(pageId: string, formId: string, leadgenId: string)
     const accessToken = configToken.valor
 
     // 4. Fetch Lead Details from Meta Graph API
-    const graphUrl = `https://graph.facebook.com/v19.0/${leadgenId}?fields=id,field_data,created_time,platform&access_token=${accessToken}`
+    const graphUrl = `https://graph.facebook.com/v19.0/${leadgenId}?fields=id,field_data,created_time,platform,campaign_name,adset_name,ad_name&access_token=${accessToken}`
     const fbRes = await fetch(graphUrl)
     const leadData = await fbRes.json()
 
@@ -224,7 +238,10 @@ async function processNewLead(pageId: string, formId: string, leadgenId: string)
         idioma: 'ES',
         estado: 'nuevo',
         notas: `Webhook Real-Time. Lead ID: ${leadgenId}`,
-        created_at: leadData.created_time || new Date().toISOString()
+        created_at: leadData.created_time || new Date().toISOString(),
+        campaign_name: leadData.campaign_name || null,
+        adset_name: leadData.adset_name || null,
+        ad_name: leadData.ad_name || null
     }
 
     const { data: insertedLead, error } = await supabase
@@ -283,8 +300,7 @@ async function processNewLead(pageId: string, formId: string, leadgenId: string)
                     estado: 'en_progreso',
                     ultimo_paso_ejecutado: 0
                 })
-                // Trigger drip process immediately for first step parity
-                await supabase.functions.invoke('process-drips')
+                return true // Indicate successful sequence enrollment
             } else {
                 console.warn(`[Automation] No active sequences found for agency ${agenciaId}. Automation skipped.`)
             }

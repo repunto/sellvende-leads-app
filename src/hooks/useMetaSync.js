@@ -285,7 +285,7 @@ export function useMetaSync({ agenciaId, showToast, setConfirmDialog }) {
                 setConfirmDialog(null)
                 try {
                     for (const o of metaOrigins) {
-                        await supabase.from('leads').delete().eq('origen', o)
+                        await supabase.from('leads').delete().eq('origen', o).eq('agencia_id', agenciaId)
                     }
                     showToast(`🗑 Leads de Meta eliminados. Ahora sincroniza de nuevo.`)
                     loadLeads()

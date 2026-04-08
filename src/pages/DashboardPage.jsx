@@ -63,6 +63,7 @@ export default function DashboardPage() {
     const [stats, setStats] = useState({
         leadsHoy: 0, leadsTotal: 0, reservasTotal: 0,
         ingresosMes: 0, costosMes: 0, utilidadMes: 0, winRate: 0,
+        cplMes: 0
     })
     const [chartData, setChartData] = useState([])
     const [topTours, setTopTours] = useState([])
@@ -96,14 +97,18 @@ export default function DashboardPage() {
                 reservasTotalResult,
                 reservasMesResult,
                 reservas6MResult,
-                recentLeadsResult
+                recentLeadsResult,
+                inversionesMesResult,
+                leadsMesResult
             ] = await Promise.all([
                 supabase.from('leads').select('*', { count: 'exact', head: true }).eq('agencia_id', agencia.id),
                 supabase.from('leads').select('*', { count: 'exact', head: true }).eq('agencia_id', agencia.id).gte('created_at', today.toISOString()),
                 supabase.from('reservas').select('*', { count: 'exact', head: true }).eq('agencia_id', agencia.id),
                 supabase.from('reservas').select('precio_venta, costo_operador').eq('agencia_id', agencia.id).gte('created_at', firstOfMonth.toISOString()),
                 supabase.from('reservas').select('created_at, precio_venta, costo_operador').eq('agencia_id', agencia.id).gte('created_at', sixMonthsAgo.toISOString()),
-                supabase.from('leads').select('id, nombre, origen, estado, created_at').eq('agencia_id', agencia.id).order('created_at', { ascending: false }).limit(4)
+                supabase.from('leads').select('id, nombre, origen, estado, created_at').eq('agencia_id', agencia.id).order('created_at', { ascending: false }).limit(4),
+                supabase.from('inversion_marketing').select('gasto_usd').eq('agencia_id', agencia.id).eq('mes', today.getMonth() + 1).eq('anio', today.getFullYear()),
+                supabase.from('leads').select('*', { count: 'exact', head: true }).eq('agencia_id', agencia.id).gte('created_at', firstOfMonth.toISOString())
             ])
 
             // Surface first critical error
@@ -121,6 +126,11 @@ export default function DashboardPage() {
             const costosMes = reservasMes.reduce((s, r) => s + Number(r.costo_operador || 0), 0)
             const utilidadMes = ingresosMes - costosMes
             const winRate = leadsTotal > 0 ? (reservasTotal / leadsTotal) * 100 : 0
+            
+            const inversionesMes = inversionesMesResult?.data || []
+            const leadsMesCount = leadsMesResult?.count || 0
+            const gastoTotalMes = inversionesMes.reduce((s, i) => s + Number(i.gasto_usd || 0), 0)
+            const cplMes = leadsMesCount > 0 ? (gastoTotalMes / leadsMesCount) : 0
 
             // Build 6-month chart
             const monthsMap = {}
@@ -196,7 +206,7 @@ export default function DashboardPage() {
                 // Table may not exist — not critical
             }
 
-            setStats({ leadsHoy, leadsTotal, reservasTotal, ingresosMes, costosMes, utilidadMes, winRate })
+            setStats({ leadsHoy, leadsTotal, reservasTotal, ingresosMes, costosMes, utilidadMes, winRate, cplMes })
             setChartData(cData)
             setTopTours(topList)
             setProxReservas(proxList)
@@ -256,9 +266,10 @@ export default function DashboardPage() {
             {/* ─── KPI SKELETON or REAL DATA ─── */}
             {loading ? (
                 <div className="kpi-grid" style={{ marginBottom: 32 }}>
-                    {[0, 1, 2, 3].map(i => <SkeletonCard key={i} height={120} />)}
+                    {[0, 1, 2, 3, 4].map(i => <SkeletonCard key={i} height={120} />)}
                 </div>
             ) : (
+                <>
                 <div className="kpi-grid">
                     <div className="kpi-card kpi-card-hero" style={animStyle(0)}>
                         <div className="kpi-card-label">
@@ -298,6 +309,17 @@ export default function DashboardPage() {
                         <div className="kpi-card-sub">Nuevas oportunidades en embudo</div>
                     </div>
                 </div>
+                
+                <div className="kpi-grid" style={{ marginTop: '20px' }}>
+                    <div className="kpi-card" style={animStyle(400)}>
+                        <div className="kpi-card-label">
+                            <span style={{ color: 'var(--color-primary)', fontSize: '1.2rem' }}>💸</span> CPL Promedio (Gasto / Lead)
+                        </div>
+                        <div className="kpi-card-value">${stats.cplMes.toFixed(2)}</div>
+                        <div className="kpi-card-sub">Costo de adquisición de leads global activo este mes</div>
+                    </div>
+                </div>
+                </>
             )}
 
             {/* ─── MIDDLE: CHART & UPCOMING ─── */}

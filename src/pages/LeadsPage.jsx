@@ -75,6 +75,7 @@ export default function LeadsPage() {
     const [configs, setConfigs]               = useState({})
     const [allTours, setAllTours]             = useState([])
     const [secuencias, setSecuencias]         = useState([])
+    const [globalForms, setGlobalForms]       = useState([])
 
     // ── WhatsApp tour selector modal ────────────────────
     const [waModal, setWaModal] = useState(null)
@@ -133,7 +134,7 @@ export default function LeadsPage() {
     // ─────────────────────────────────────────────────────
     const {
         leadSecuencia, setLeadSecuencia,
-        sequenceEnrollments, setSequenceEnrollments,
+        sequenceEnrollments: localSeqEnrollments, setSequenceEnrollments,
         showMassSequenceModal, setShowMassSequenceModal,
         selectedMassSequenceId, setSelectedMassSequenceId,
         enrollingSequence,
@@ -151,10 +152,15 @@ export default function LeadsPage() {
         setConfirmDialog,
     })
 
+    // Merge: DB-loaded enrollments (seqEnrollmentsFromSync) as base,
+    // local session changes (localSeqEnrollments) override on top.
+    // This fixes the missing 🚀 after mass enroll or page reload.
+    const sequenceEnrollments = { ...seqEnrollmentsFromSync, ...localSeqEnrollments }
+
     // mass enroll needs selectedLeads Set
     const handleMassSequenceEnroll = useCallback(() => {
-        _handleMassSequenceEnroll(selectedLeads)
-    }, [_handleMassSequenceEnroll, selectedLeads])
+        _handleMassSequenceEnroll(selectedLeads, leads)
+    }, [_handleMassSequenceEnroll, selectedLeads, leads])
 
     // ─────────────────────────────────────────────────────
     // HOOK: Lead Email
@@ -232,6 +238,19 @@ export default function LeadsPage() {
         supabase.from('tours').select('id, nombre, precio_usd, duracion_dias')
             .eq('agencia_id', agencia.id)
             .then(({ data }) => { if (data) setAllTours(data) })
+            
+        // Fetch all distinct forms from the entire database, not just paginated
+        supabase.from('leads').select('form_name, tour_nombre').eq('agencia_id', agencia.id).limit(5000)
+            .then(({ data }) => {
+                if (data) {
+                    const uniqueForms = new Set(data.map(l => {
+                        let f = l.form_name || l.tour_nombre || '';
+                        if (f.includes(' - ')) f = f.split(' - ')[0].trim();
+                        return f;
+                    }).filter(Boolean));
+                    setGlobalForms([...uniqueForms].sort());
+                }
+            })
     }, [agencia?.id])
 
     // Auto-sync Meta every 30 min
@@ -349,12 +368,70 @@ export default function LeadsPage() {
         })
     }, [])
 
-    // toggleSelectAll selects all valid leads on the current visible page
-    const toggleSelectAll = useCallback(() => {
-        const emailLeads = leads.filter(l => l.email && !l.unsubscribed)
-        const allSelected = emailLeads.length > 0 && emailLeads.every(l => selectedLeads.has(l.id))
-        setSelectedLeads(allSelected ? new Set() : new Set(emailLeads.map(l => l.id)))
-    }, [leads, selectedLeads])
+    // toggleSelectAll selects ALL valid leads across ALL pages using the server RPC
+    const [cargandoSeleccionMassiva, setCargandoSeleccionMassiva] = useState(false);
+    const toggleSelectAll = useCallback(async () => {
+        // If already have selections, clear them (toggle off)
+        if (selectedLeads.size > 0) {
+            setSelectedLeads(new Set());
+            return;
+        }
+
+        setCargandoSeleccionMassiva(true);
+        try {
+            const PER_PAGE = 500;
+            const allIds = [];
+
+            const { data: firstPage, error: firstErr } = await supabase.rpc('get_leads_page', {
+                p_agencia_id:   agencia?.id,
+                p_page:         1,
+                p_per_page:     PER_PAGE,
+                p_search:       search   || null,
+                p_estado:       filtroEstado   || null,
+                p_form_name:    filtroFormulario || null,
+                p_date_from:    dateFrom || null,
+                p_date_to:      dateTo   || null,
+                p_kanban:       false,
+                p_kanban_limit: 0,
+            });
+            if (firstErr) throw firstErr;
+            if (!firstPage || firstPage.length === 0) {
+                showToast('No se encontraron leads con estos filtros', 'info');
+                setCargandoSeleccionMassiva(false);
+                return;
+            }
+
+            const totalCount = Number(firstPage[0]?.total_count ?? 0);
+            firstPage.forEach(l => { if (l.email && !l.unsubscribed) allIds.push(l.id) });
+
+            const totalPages = Math.ceil(totalCount / PER_PAGE);
+            for (let p = 2; p <= totalPages; p++) {
+                const { data: pageData, error: pageErr } = await supabase.rpc('get_leads_page', {
+                    p_agencia_id:   agencia?.id,
+                    p_page:         p,
+                    p_per_page:     PER_PAGE,
+                    p_search:       search   || null,
+                    p_estado:       filtroEstado   || null,
+                    p_form_name:    filtroFormulario || null,
+                    p_date_from:    dateFrom || null,
+                    p_date_to:      dateTo   || null,
+                    p_kanban:       false,
+                    p_kanban_limit: 0,
+                });
+                if (pageErr) throw pageErr;
+                if (pageData) pageData.forEach(l => { if (l.email && !l.unsubscribed) allIds.push(l.id) });
+            }
+
+            setSelectedLeads(new Set(allIds));
+            showToast(`🎯 ${allIds.length} leads seleccionados de todas las páginas`);
+        } catch (error) {
+            showToast('Error seleccionando todos: ' + error.message, 'error');
+        } finally {
+            setCargandoSeleccionMassiva(false);
+        }
+     }, [agencia?.id, search, filtroEstado, filtroFormulario, dateFrom, dateTo, selectedLeads.size, showToast]);
+
+
 
     // ─────────────────────────────────────────────────────
     // KANBAN
@@ -477,6 +554,7 @@ export default function LeadsPage() {
                     filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
                     filtroFormulario={filtroFormulario} setFiltroFormulario={setFiltroFormulario}
                     leads={leads}
+                    globalForms={globalForms}
                     syncMetaLeads={syncMetaLeads} syncing={syncing}
                     deleteAllMetaLeads={deleteAllMetaLeads}
                     openForm={openForm}
@@ -558,6 +636,7 @@ export default function LeadsPage() {
                         setSelectedLeads={setSelectedLeads}
                         paginated={paginated}
                         toggleSelectAll={toggleSelectAll}
+                        cargandoSeleccionMassiva={cargandoSeleccionMassiva}
                         toggleSelectLead={toggleSelectLead}
                         openDetailPanel={openDetailPanel}
                         getColdLevel={getColdLevel}
@@ -570,6 +649,7 @@ export default function LeadsPage() {
                         handleWhatsAppClick={handleWhatsAppClick}
                         openForm={openForm}
                         handleDelete={handleDelete}
+                        totalLeads={totalLeads}
                         totalPages={totalPages}
                         currentPage={currentPage}
                         setCurrentPage={setCurrentPage}
