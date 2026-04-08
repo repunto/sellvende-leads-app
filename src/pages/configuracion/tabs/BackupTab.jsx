@@ -87,7 +87,7 @@ export default function BackupTab({ showToast, agencia }) {
                     <span style={{ fontSize: '1.8rem' }}>☁️</span> Copias de Seguridad en la Nube
                 </h2>
                 <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', marginTop: 8 }}>
-                    Conecta tu sistema Quipu con Google Drive. Genera Documentos de Excel (Google Sheets) masivos con un solo click que contendrán
+                    Conecta tu sistema Sellvende Leads con Google Drive. Genera Documentos de Excel (Google Sheets) masivos con un solo click que contendrán
                     todos tus <strong>Leads, Reservas, Tours y Opcionales.</strong>
                 </p>
             </div>
@@ -117,7 +117,7 @@ export default function BackupTab({ showToast, agencia }) {
                 <div style={{ flex: 1 }}>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12, color: '#166534' }}>Paso 2: Disparar Respaldo Maestro</h3>
                     <p style={{ fontSize: '0.85rem', color: '#15803d', marginBottom: 0 }}>
-                        Al hacer click, juntaremos cientos de registros de información desde tu Base de Datos Supabase oficial y en segundos crearemos un nuevo archivo Google Sheet original llamado "Backup_QuipuReservas" directo en tu unidad.
+                        Al hacer click, juntaremos cientos de registros de información desde tu Base de Datos Supabase oficial y en segundos crearemos un nuevo archivo Google Sheet original llamado "Backup_SellvendeLeads" directo en tu unidad.
                     </p>
                 </div>
                 <button 

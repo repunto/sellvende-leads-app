@@ -170,7 +170,7 @@ export default function LoginPage() {
                         color: 'white', margin: '0 0 6px 0',
                         letterSpacing: '-0.5px'
                     }}>
-                        Quipu <span style={{ color: '#a5b4fc' }}>Reservas</span>
+                        Sellvende <span style={{ color: '#a5b4fc' }}>Leads</span>
                     </h1>
                     <p style={{
                         fontSize: '14px', color: '#94a3b8', margin: 0, fontWeight: 400

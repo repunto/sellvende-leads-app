@@ -45,7 +45,7 @@ export default function Layout({ children }) {
             <header className="mobile-header">
                 <div className="sidebar-brand" style={{ padding: 0, border: 'none' }}>
                     <div className="sidebar-brand-icon">{agencia?.nombre ? agencia.nombre.charAt(0).toUpperCase() : 'Q'}</div>
-                    <div className="sidebar-brand-text">{agencia?.nombre || 'Quipu'}</div>
+                    <div className="sidebar-brand-text">{agencia?.nombre || 'Sellvende'}</div>
                 </div>
                 <button className="hamburger" onClick={toggleSidebar}>
                     {isSidebarOpen ? '✕' : '☰'}
@@ -59,7 +59,7 @@ export default function Layout({ children }) {
                 <div className="sidebar-brand">
                     <div className="sidebar-brand-icon">{agencia?.nombre ? agencia.nombre.charAt(0).toUpperCase() : 'Q'}</div>
                     <div className="sidebar-brand-text">
-                        {agencia?.nombre || 'Quipu Reservas'}
+                        {agencia?.nombre || 'Sellvende Leads'}
                     </div>
                 </div>
 

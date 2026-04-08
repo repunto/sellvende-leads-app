@@ -185,7 +185,7 @@ export function useLeadEmail({
         try {
             const config = await loadEmailConfig()
             const fromEmail = config['email_remitente'] || ''
-            const agencyName = config['nombre_visible'] || agencia?.nombre || 'QuipuReservas'
+            const agencyName = config['nombre_visible'] || agencia?.nombre || 'Sellvende Leads'
             const senderName = config['nombre_remitente'] || agencyName
 
             if (!fromEmail) {
@@ -350,7 +350,7 @@ export function useLeadEmail({
             const config = await loadEmailConfig()
             const provider = config['proveedor_email'] || 'gmail'
             const fromEmail = config['email_remitente'] || ''
-            const agencyName = config['nombre_visible'] || agencia?.nombre || 'QuipuReservas'
+            const agencyName = config['nombre_visible'] || agencia?.nombre || 'Sellvende Leads'
             const senderName = config['nombre_remitente'] || agencyName
 
             if (!fromEmail) {

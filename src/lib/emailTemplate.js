@@ -106,7 +106,7 @@ export const sanitizeQuillHtml = cleanHtmlForEmail;
 
 export function wrapEmailTemplate({
     body,
-    agencyName = 'QuipuReservas',
+    agencyName = 'Sellvende Leads',
     agencyUrl = '',
     agencyEmail = '',
     agencyPhone = '',
