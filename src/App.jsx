@@ -5,14 +5,15 @@ import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import LeadsPage from './pages/LeadsPage'
-import ReservasPage from './pages/ReservasPage'
+import VentasPage from './pages/VentasPage'
 import CalendarioPage from './pages/CalendarioPage'
-import ToursPage from './pages/ToursPage'
-import OpcionalesPage from './pages/OpcionalesPage'
+import ProductosPage from './pages/ProductosPage'
+import ExtrasPage from './pages/ExtrasPage'
 import DescuentosPage from './pages/DescuentosPage'
 import OperadoresPage from './pages/OperadoresPage'
 import ActivityPage from './pages/ActivityPage'
 import MarketingPage from './pages/MarketingPage'
+import FinanzasPage from './pages/FinanzasPage'
 import ConfiguracionPage from './pages/ConfiguracionPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 
@@ -92,11 +93,18 @@ export default function App() {
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
             <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
             <Route path="/leads" element={<ProtectedRoute><LeadsPage /></ProtectedRoute>} />
-            <Route path="/reservas" element={<ProtectedRoute><ReservasPage /></ProtectedRoute>} />
+            {/* Nuevas rutas con glosario universal */}
+            <Route path="/ventas" element={<ProtectedRoute><VentasPage /></ProtectedRoute>} />
+            <Route path="/productos" element={<ProtectedRoute><ProductosPage /></ProtectedRoute>} />
+            <Route path="/extras" element={<ProtectedRoute><ExtrasPage /></ProtectedRoute>} />
+            <Route path="/finanzas" element={<ProtectedRoute><FinanzasPage /></ProtectedRoute>} />
+            {/* Alias de compatibilidad — rutas viejas redirigen a las nuevas */}
+            <Route path="/reservas" element={<Navigate to="/ventas" replace />} />
+            <Route path="/tours" element={<Navigate to="/productos" replace />} />
+            <Route path="/opcionales" element={<Navigate to="/extras" replace />} />
+            {/* Rutas que mantienen su nombre */}
             <Route path="/calendario" element={<ProtectedRoute><CalendarioPage /></ProtectedRoute>} />
             <Route path="/actividad" element={<ProtectedRoute><ActivityPage /></ProtectedRoute>} />
-            <Route path="/tours" element={<ProtectedRoute><ToursPage /></ProtectedRoute>} />
-            <Route path="/opcionales" element={<ProtectedRoute><OpcionalesPage /></ProtectedRoute>} />
             <Route path="/descuentos" element={<ProtectedRoute><DescuentosPage /></ProtectedRoute>} />
             <Route path="/operadores" element={<ProtectedRoute><OperadoresPage /></ProtectedRoute>} />
             <Route path="/marketing" element={<ProtectedRoute><MarketingPage /></ProtectedRoute>} />

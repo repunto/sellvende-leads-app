@@ -3,22 +3,23 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import CommandPalette from './CommandPalette'
 
-import { LayoutDashboard, Users, Ticket, CalendarDays, Map, Package, Tag, TrendingUp, Users as UsersIcon, Settings, LogOut, Activity } from 'lucide-react'
+import { LayoutDashboard, Users, ShoppingCart, CalendarDays, Package, Gift, Tag, BarChart2, Users as UsersIcon, Settings, LogOut, Activity, DollarSign } from 'lucide-react'
 
 const navItems = [
     { path: '/', icon: <LayoutDashboard size={20} strokeWidth={2.5} />, label: 'Dashboard' },
     { path: '/leads', icon: <Users size={20} strokeWidth={2.5} />, label: 'Leads' },
-    { path: '/reservas', icon: <Ticket size={20} strokeWidth={2.5} />, label: 'Reservas' },
+    { path: '/ventas', icon: <ShoppingCart size={20} strokeWidth={2.5} />, label: 'Ventas' },
     { path: '/calendario', icon: <CalendarDays size={20} strokeWidth={2.5} />, label: 'Calendario' },
     { path: '/actividad', icon: <Activity size={20} strokeWidth={2.5} />, label: 'Radar' },
 ]
 
 const configItems = [
-    { path: '/tours', icon: <Map size={20} strokeWidth={2.5} />, label: 'Tours' },
-    { path: '/opcionales', icon: <Package size={20} strokeWidth={2.5} />, label: 'Opcionales' },
+    { path: '/productos', icon: <Package size={20} strokeWidth={2.5} />, label: 'Productos' },
+    { path: '/extras', icon: <Gift size={20} strokeWidth={2.5} />, label: 'Extras / Up-sells' },
     { path: '/descuentos', icon: <Tag size={20} strokeWidth={2.5} />, label: 'Descuentos' },
-    { path: '/marketing', icon: <TrendingUp size={20} strokeWidth={2.5} />, label: 'Marketing ROI' },
-    { path: '/operadores', icon: <UsersIcon size={20} strokeWidth={2.5} />, label: 'Operadores' },
+    { path: '/finanzas', icon: <DollarSign size={20} strokeWidth={2.5} />, label: 'Finanzas & ROAS' },
+    { path: '/marketing', icon: <BarChart2 size={20} strokeWidth={2.5} />, label: 'Automatización Email' },
+    { path: '/operadores', icon: <UsersIcon size={20} strokeWidth={2.5} />, label: 'Equipo Comercial' },
     { path: '/configuracion', icon: <Settings size={20} strokeWidth={2.5} />, label: 'Configuración' },
 ]
 
