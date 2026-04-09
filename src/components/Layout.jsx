@@ -44,8 +44,8 @@ export default function Layout({ children }) {
             {/* Mobile Header */}
             <header className="mobile-header">
                 <div className="sidebar-brand" style={{ padding: 0, border: 'none' }}>
-                    <div className="sidebar-brand-icon">{agencia?.nombre ? agencia.nombre.charAt(0).toUpperCase() : 'Q'}</div>
-                    <div className="sidebar-brand-text">{agencia?.nombre || 'Sellvende'}</div>
+                    <div className="sidebar-brand-icon" style={{ background: 'var(--color-accent)' }}>S</div>
+                    <div className="sidebar-brand-text">Sellvende</div>
                 </div>
                 <button className="hamburger" onClick={toggleSidebar}>
                     {isSidebarOpen ? '✕' : '☰'}
@@ -57,10 +57,15 @@ export default function Layout({ children }) {
 
             <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
                 <div className="sidebar-brand">
-                    <div className="sidebar-brand-icon">{agencia?.nombre ? agencia.nombre.charAt(0).toUpperCase() : 'Q'}</div>
+                    <div className="sidebar-brand-icon" style={{ background: 'linear-gradient(135deg, var(--color-accent) 0%, #c2410c 100%)' }}>S</div>
                     <div className="sidebar-brand-text">
-                        {agencia?.nombre || 'Sellvende Leads'}
+                        Sellvende <span style={{ color: 'var(--color-accent)' }}>Leads</span>
                     </div>
+                </div>
+
+                <div style={{ padding: '0 24px 20px', fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500 }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 8px rgba(16, 185, 129, 0.4)' }}></div>
+                    Espacio: <span style={{ color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agencia?.nombre || 'Cargando...'}</span>
                 </div>
 
                 <nav className="sidebar-nav">
