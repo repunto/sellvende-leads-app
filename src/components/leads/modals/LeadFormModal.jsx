@@ -101,7 +101,7 @@ export default function LeadFormModal({
             .replace(/\s*[-–]\s*[A-Za-z]+\s+\d{4}\s*$/i, '')
             .replace(/\s*\(\d{1,2}\/\d{1,2}\/\d{2,4}\)\s*$/i, '')
             .trim()
-        const raw = (leads || []).map(l => l.form_name || l.tour_nombre).filter(Boolean)
+        const raw = (leads || []).map(l => l.form_name || l.producto_interes).filter(Boolean)
         return [...new Set(raw.map(stripDate))].sort()
     }
     const formOptions = getFormsFromLeads()
@@ -175,21 +175,21 @@ export default function LeadFormModal({
                         </div>
                     )}
 
-                    {/* Estado + Tour */}
+                    {/* Estado + Producto */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <div>
                             <label style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>Estado *</label>
                             <select className="form-input" value={formData.estado || 'nuevo'}
                                 onChange={e => setFormData({ ...formData, estado: e.target.value })}>
-                                {['nuevo', 'contactado', 'cotizado', 'reservado'].map(st => (
+                                {['nuevo', 'contactado', 'cotizado', 'ventado'].map(st => (
                                     <option key={st} value={st}>{st.charAt(0).toUpperCase() + st.slice(1)}</option>
                                 ))}
                             </select>
                         </div>
                         <div>
                             <label style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>Formulario (Origen)</label>
-                            <select className="form-input" value={formData.tour_nombre || ''}
-                                onChange={e => setFormData({ ...formData, tour_nombre: e.target.value, form_name: e.target.value })}>
+                            <select className="form-input" value={formData.producto_interes || ''}
+                                onChange={e => setFormData({ ...formData, producto_interes: e.target.value, form_name: e.target.value })}>
                                 <option value="">No especificado</option>
                                 {formOptions.map(t => <option key={t} value={t}>{t}</option>)}
                             </select>

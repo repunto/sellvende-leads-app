@@ -24,7 +24,7 @@ export default function ExtrasPage() {
         if (!agencia?.id) return
         setLoading(true)
         const { data, error } = await supabase
-            .from('opcionales')
+            .from('extras')
             .select('*')
             .eq('agencia_id', agencia.id)
             .order('created_at', { ascending: true })
@@ -45,11 +45,11 @@ export default function ExtrasPage() {
         const updatedItem = updatedList.find(item => item.id === id)
 
         try {
-            const { error } = await supabase.from('opcionales')
+            const { error } = await supabase.from('extras')
                 .update({
                     nombre: updatedItem.nombre,
                     precio_usd: updatedItem.precio_usd,
-                    costo_operador: updatedItem.costo_operador,
+                    costo_asesor: updatedItem.costo_asesor,
                     activo: updatedItem.activo
                 })
                 .eq('id', id)
@@ -73,18 +73,18 @@ export default function ExtrasPage() {
                 agencia_id: profile.agencia_id,
                 nombre: 'Nuevo Extra / Up-sell',
                 precio_usd: 0,
-                costo_operador: 0,
+                costo_asesor: 0,
                 activo: true
             }
 
-            const { data, error } = await supabase.from('opcionales').insert([newRow]).select()
+            const { data, error } = await supabase.from('extras').insert([newRow]).select()
             if (error) throw error
 
             setExtras([...extras, data[0]])
             showToast('Extra añadido')
         } catch (error) {
             console.error(error)
-            showToast('Error al crear opcional', 'error')
+            showToast('Error al crear extra', 'error')
         }
     }
 
@@ -97,7 +97,7 @@ export default function ExtrasPage() {
             onConfirm: async () => {
                 setConfirmDialog(null)
                 try {
-                    const { error } = await supabase.from('opcionales').delete().eq('id', id)
+                    const { error } = await supabase.from('extras').delete().eq('id', id)
                     if (error) throw error
                     showToast('Extra eliminado')
                     loadExtras()
@@ -109,10 +109,10 @@ export default function ExtrasPage() {
         })
     }
 
-    async function handleSyncOpcionales() {
+    async function handleSyncextras() {
         setConfirmDialog({
-            title: 'Sincronizar Opcionales G-Sheet',
-            message: '¿Seguro que deseas sobrescribir TODOS los opcionales con la lista del Google Sheet?',
+            title: 'Sincronizar extras G-Sheet',
+            message: '¿Seguro que deseas sobrescribir TODOS los extras con la lista del Google Sheet?',
             danger: true,
             confirmLabel: '🔄 Sincronizar',
             onConfirm: async () => {
@@ -128,40 +128,40 @@ export default function ExtrasPage() {
 
                     const agenciaId = profile.agencia_id;
 
-                    // Delete current opcionales
-                    await supabase.from('opcionales').delete().eq('agencia_id', agenciaId);
+                    // Delete current extras
+                    await supabase.from('extras').delete().eq('agencia_id', agenciaId);
 
-            // Insert new opcionales from Google Sheet
-            const opcionalesList = [
-                { agencia_id: agenciaId, nombre: 'Rafting', precio_usd: 30, costo_operador: 25 },
-                { agencia_id: agenciaId, nombre: 'Zip Line', precio_usd: 30, costo_operador: 25 },
-                { agencia_id: agenciaId, nombre: 'Rafting + Zipline', precio_usd: 60, costo_operador: 50 },
-                { agencia_id: agenciaId, nombre: 'Huaynapicchu', precio_usd: 70, costo_operador: 70 },
-                { agencia_id: agenciaId, nombre: 'Montaña Mapi', precio_usd: 15, costo_operador: 15 },
-                { agencia_id: agenciaId, nombre: 'Machupicchu', precio_usd: 47, costo_operador: 47 },
-                { agencia_id: agenciaId, nombre: 'Machupicchu Discount', precio_usd: 47, costo_operador: 47 }, // Note: assuming parentheses () mean negative discount, will treat as absolute cost for now or mapped as needed. Using positive values as they represent items.
-                { agencia_id: agenciaId, nombre: 'Tren 21:50', precio_usd: 5, costo_operador: 5 },
-                { agencia_id: agenciaId, nombre: 'Tren 18:20', precio_usd: 10, costo_operador: 10 },
-                { agencia_id: agenciaId, nombre: 'Tren Adicional', precio_usd: 70, costo_operador: 70 },
-                { agencia_id: agenciaId, nombre: 'Tren Descuento', precio_usd: 70, costo_operador: 70 },
-                { agencia_id: agenciaId, nombre: 'Porter', precio_usd: 120, costo_operador: 120 },
-                { agencia_id: agenciaId, nombre: 'Horse', precio_usd: 40, costo_operador: 40 },
-                { agencia_id: agenciaId, nombre: 'Bus Round Trip', precio_usd: 24, costo_operador: 24 },
-                { agencia_id: agenciaId, nombre: 'Bus Up', precio_usd: 12, costo_operador: 12 },
-                { agencia_id: agenciaId, nombre: 'Bus Down', precio_usd: 12, costo_operador: 12 },
-                { agencia_id: agenciaId, nombre: 'Cocalmayo', precio_usd: 5, costo_operador: 5 },
-                { agencia_id: agenciaId, nombre: 'BTP', precio_usd: 23, costo_operador: 23 },
-                { agencia_id: agenciaId, nombre: 'BTG', precio_usd: 42, costo_operador: 42 },
-                { agencia_id: agenciaId, nombre: 'Almuerzo Buffet Urubamba', precio_usd: 10, costo_operador: 10 },
-                { agencia_id: agenciaId, nombre: 'Almuerzo MAPI', precio_usd: 30, costo_operador: 30 },
-                { agencia_id: agenciaId, nombre: 'Transporte privado', precio_usd: 200, costo_operador: 100 }
+            // Insert new extras from Google Sheet
+            const extrasList = [
+                { agencia_id: agenciaId, nombre: 'Rafting', precio_usd: 30, costo_asesor: 25 },
+                { agencia_id: agenciaId, nombre: 'Zip Line', precio_usd: 30, costo_asesor: 25 },
+                { agencia_id: agenciaId, nombre: 'Rafting + Zipline', precio_usd: 60, costo_asesor: 50 },
+                { agencia_id: agenciaId, nombre: 'Huaynapicchu', precio_usd: 70, costo_asesor: 70 },
+                { agencia_id: agenciaId, nombre: 'Montaña Mapi', precio_usd: 15, costo_asesor: 15 },
+                { agencia_id: agenciaId, nombre: 'Machupicchu', precio_usd: 47, costo_asesor: 47 },
+                { agencia_id: agenciaId, nombre: 'Machupicchu Discount', precio_usd: 47, costo_asesor: 47 }, // Note: assuming parentheses () mean negative discount, will treat as absolute cost for now or mapped as needed. Using positive values as they represent items.
+                { agencia_id: agenciaId, nombre: 'Tren 21:50', precio_usd: 5, costo_asesor: 5 },
+                { agencia_id: agenciaId, nombre: 'Tren 18:20', precio_usd: 10, costo_asesor: 10 },
+                { agencia_id: agenciaId, nombre: 'Tren Adicional', precio_usd: 70, costo_asesor: 70 },
+                { agencia_id: agenciaId, nombre: 'Tren Descuento', precio_usd: 70, costo_asesor: 70 },
+                { agencia_id: agenciaId, nombre: 'Porter', precio_usd: 120, costo_asesor: 120 },
+                { agencia_id: agenciaId, nombre: 'Horse', precio_usd: 40, costo_asesor: 40 },
+                { agencia_id: agenciaId, nombre: 'Bus Round Trip', precio_usd: 24, costo_asesor: 24 },
+                { agencia_id: agenciaId, nombre: 'Bus Up', precio_usd: 12, costo_asesor: 12 },
+                { agencia_id: agenciaId, nombre: 'Bus Down', precio_usd: 12, costo_asesor: 12 },
+                { agencia_id: agenciaId, nombre: 'Cocalmayo', precio_usd: 5, costo_asesor: 5 },
+                { agencia_id: agenciaId, nombre: 'BTP', precio_usd: 23, costo_asesor: 23 },
+                { agencia_id: agenciaId, nombre: 'BTG', precio_usd: 42, costo_asesor: 42 },
+                { agencia_id: agenciaId, nombre: 'Almuerzo Buffet Urubamba', precio_usd: 10, costo_asesor: 10 },
+                { agencia_id: agenciaId, nombre: 'Almuerzo MAPI', precio_usd: 30, costo_asesor: 30 },
+                { agencia_id: agenciaId, nombre: 'Transporte privado', precio_usd: 200, costo_asesor: 100 }
             ];
 
-            const { error: insertErr } = await supabase.from('opcionales').insert(opcionalesList);
+            const { error: insertErr } = await supabase.from('extras').insert(extrasList);
             if (insertErr) throw insertErr;
 
-            showToast('¡Los 22 Opcionales han sido sincronizados exitosamente!');
-            loadOpcionales();
+            showToast('¡Los 22 extras han sido sincronizados exitosamente!');
+            loadextras();
         } catch (error) {
             console.error(error);
             alert('Error al sincronizar: ' + error.message);
@@ -224,7 +224,7 @@ export default function ExtrasPage() {
                             <tbody>
                                 {extras.map(item => {
                                     const venta = parseFloat(item.precio_usd || 0);
-                                    const costo = parseFloat(item.costo_operador || 0);
+                                    const costo = parseFloat(item.costo_asesor || 0);
                                     const beneficio = venta - costo;
 
                                     // Consider formatting negative numbers with parentheses like G-Sheets
@@ -254,7 +254,7 @@ export default function ExtrasPage() {
                                                     <CellInput
                                                         type="number"
                                                         value={costo}
-                                                        onChange={(val) => handleInlineUpdate(item.id, 'costo_operador', val)}
+                                                        onChange={(val) => handleInlineUpdate(item.id, 'costo_asesor', val)}
                                                         minWidth={50}
                                                     />
                                                 </div>

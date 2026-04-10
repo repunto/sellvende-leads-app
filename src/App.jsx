@@ -10,7 +10,7 @@ import CalendarioPage from './pages/CalendarioPage'
 import ProductosPage from './pages/ProductosPage'
 import ExtrasPage from './pages/ExtrasPage'
 import DescuentosPage from './pages/DescuentosPage'
-import OperadoresPage from './pages/OperadoresPage'
+import AsesoresPage from './pages/AsesoresPage'
 import ActivityPage from './pages/ActivityPage'
 import MarketingPage from './pages/MarketingPage'
 import FinanzasPage from './pages/FinanzasPage'
@@ -98,15 +98,12 @@ export default function App() {
             <Route path="/productos" element={<ProtectedRoute><ProductosPage /></ProtectedRoute>} />
             <Route path="/extras" element={<ProtectedRoute><ExtrasPage /></ProtectedRoute>} />
             <Route path="/finanzas" element={<ProtectedRoute><FinanzasPage /></ProtectedRoute>} />
-            {/* Alias de compatibilidad — rutas viejas redirigen a las nuevas */}
-            <Route path="/reservas" element={<Navigate to="/ventas" replace />} />
-            <Route path="/tours" element={<Navigate to="/productos" replace />} />
-            <Route path="/opcionales" element={<Navigate to="/extras" replace />} />
+            {/* Routes above already handle /ventas, /productos, /extras */}
             {/* Rutas que mantienen su nombre */}
             <Route path="/calendario" element={<ProtectedRoute><CalendarioPage /></ProtectedRoute>} />
             <Route path="/actividad" element={<ProtectedRoute><ActivityPage /></ProtectedRoute>} />
             <Route path="/descuentos" element={<ProtectedRoute><DescuentosPage /></ProtectedRoute>} />
-            <Route path="/operadores" element={<ProtectedRoute><OperadoresPage /></ProtectedRoute>} />
+            <Route path="/asesores" element={<ProtectedRoute><AsesoresPage /></ProtectedRoute>} />
             <Route path="/marketing" element={<ProtectedRoute><MarketingPage /></ProtectedRoute>} />
             <Route path="/configuracion" element={<ProtectedRoute><ConfiguracionPage /></ProtectedRoute>} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />

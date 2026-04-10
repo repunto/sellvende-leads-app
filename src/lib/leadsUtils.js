@@ -25,12 +25,12 @@ export function getLeadScore(lead) {
     // Data completeness (max 2 pts)
     if (lead.email) score += 0.5
     if (lead.telefono) score += 0.5
-    if (lead.tour_nombre) score += 0.5
+    if (lead.producto_interes) score += 0.5
     if (lead.personas) score += 0.5
     // Engagement (max 2 pts)
     if (lead.estado === 'contactado') score += 1
     if (lead.estado === 'cotizado') score += 1.5
-    if (lead.estado === 'reservado') score += 2
+    if (lead.estado === 'ventado') score += 2
     if (lead.ultimo_contacto) score += 0.5
     // Recency (max 1 pt)
     const daysAgo = (Date.now() - new Date(lead.created_at).getTime()) / 86400000

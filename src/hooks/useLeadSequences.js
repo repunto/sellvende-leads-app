@@ -188,7 +188,7 @@ export function useLeadSequences({
         }
 
         const targetSeqInfo = secuencias.find(s => s.id === selectedMassSequenceId)
-        const matchString = (targetSeqInfo?.tour_match || '').toLowerCase().trim()
+        const matchString = (targetSeqInfo?.producto_match || '').toLowerCase().trim()
         
         let hasCollision = false;
         let collisionDetails = [];
@@ -198,14 +198,14 @@ export function useLeadSequences({
             
             loadedLeads.forEach(lead => {
                 if (selectedLeads.has(lead.id)) {
-                    let lTour = (lead.tour_nombre || lead.form_name || '').toLowerCase();
-                    if(lTour.includes(' - ')) lTour = lTour.split(' - ')[0].trim();
+                    let lProducto = (lead.producto_interes || lead.form_name || '').toLowerCase();
+                    if(lProducto.includes(' - ')) lProducto = lProducto.split(' - ')[0].trim();
 
-                    if (lTour !== '') {
-                        const matchesAny = matchTerms.some(term => lTour.includes(term));
+                    if (lProducto !== '') {
+                        const matchesAny = matchTerms.some(term => lProducto.includes(term));
                         if (!matchesAny) {
                             hasCollision = true;
-                            collisionDetails.push(lead.tour_nombre || lead.form_name || 'Desconocido');
+                            collisionDetails.push(lead.producto_interes || lead.form_name || 'Desconocido');
                         }
                     }
                 }
@@ -215,8 +215,8 @@ export function useLeadSequences({
         if (hasCollision) {
             const uniqueCollisions = [...new Set(collisionDetails)].slice(0, 3).join(', ');
             setConfirmDialog({
-                title: '⚠️ ALERTA DE CROSS-TOUR',
-                message: `Estás a punto de inscribir leads que solicitaron "${uniqueCollisions}" en la secuencia "${targetSeqInfo?.nombre}" (Target: "${targetSeqInfo?.tour_match}"). Esto enviará correos equivocados. ¿Estás ABSOLUTAMENTE seguro de continuar?`,
+                title: '⚠️ ALERTA DE CROSS-PRODUCTO',
+                message: `Estás a punto de inscribir leads que solicitaron "${uniqueCollisions}" en la secuencia "${targetSeqInfo?.nombre}" (Target: "${targetSeqInfo?.producto_match}"). Esto enviará correos equivocados. ¿Estás ABSOLUTAMENTE seguro de continuar?`,
                 danger: true,
                 confirmLabel: `🚨 Sí, Enrolar ignorando error`,
                 onConfirm: () => {

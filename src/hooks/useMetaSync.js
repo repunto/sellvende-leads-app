@@ -29,7 +29,7 @@ export function useMetaSync({ agenciaId, showToast, setConfirmDialog }) {
     // ── KPIs (from server RPC) ───────────────────────────────────────────────
     const [kpis, setKpis] = useState({
         total: 0, nuevo: 0, contactado: 0,
-        cotizado: 0, reservado: 0, frios: 0, dado_de_baja: 0
+        cotizado: 0, ventado: 0, frios: 0, dado_de_baja: 0
     })
 
     // ── Realtime: incoming leads notification ────────────────────────────────

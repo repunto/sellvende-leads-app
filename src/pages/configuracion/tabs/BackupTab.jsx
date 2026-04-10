@@ -38,23 +38,23 @@ export default function BackupTab({ showToast, agencia }) {
         showToast('Extrayendo toda la base de datos... Por favor espera.')
         try {
             // 1. Extraer todas las tablas críticas
-            const [leads, reservas, tours, opciones] = await Promise.all([
+            const [leads, ventas, productos, opciones] = await Promise.all([
                 supabase.from('leads').select('*').order('created_at', { ascending: false }),
-                supabase.from('reservas').select('*').order('created_at', { ascending: false }),
-                supabase.from('tours').select('*').order('created_at', { ascending: false }),
-                supabase.from('opcionales').select('*').order('created_at', { ascending: false })
+                supabase.from('ventas').select('*').order('created_at', { ascending: false }),
+                supabase.from('productos').select('*').order('created_at', { ascending: false }),
+                supabase.from('extras').select('*').order('created_at', { ascending: false })
             ])
 
             if (leads.error) throw leads.error
-            if (reservas.error) throw reservas.error
-            if (tours.error) throw tours.error
+            if (ventas.error) throw ventas.error
+            if (productos.error) throw productos.error
             if (opciones.error) throw opciones.error
 
             const payload = {
                 leads: leads.data || [],
-                reservas: reservas.data || [],
-                tours: tours.data || [],
-                opcionales: opciones.data || []
+                ventas: ventas.data || [],
+                productos: productos.data || [],
+                extras: opciones.data || []
             }
 
             // 2. Disparar a Google Drive
@@ -88,7 +88,7 @@ export default function BackupTab({ showToast, agencia }) {
                 </h2>
                 <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', marginTop: 8 }}>
                     Conecta tu sistema Sellvende Leads con Google Drive. Genera Documentos de Excel (Google Sheets) masivos con un solo click que contendrán
-                    todos tus <strong>Leads, Reservas, Tours y Opcionales.</strong>
+                    todos tus <strong>Leads, Ventas, Productos y extras.</strong>
                 </p>
             </div>
 

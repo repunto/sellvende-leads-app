@@ -1,14 +1,14 @@
 import { useEffect, useCallback, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useReservasData } from '../hooks/useReservasData'
+import { useVentasData } from '../hooks/useVentasData'
 
 import CellInput   from '../components/CellInput'
 import PdfVoucher  from '../components/PdfVoucher'
 import SkeletonTable from '../components/SkeletonTable'
 import ConfirmModal from '../components/leads/modals/ConfirmModal'
-import CommHubModal from '../components/reservas/CommHubModal'
-import ReservaFormModal from '../components/reservas/ReservaFormModal'
+import CommHubModal from '../components/ventas/CommHubModal'
+import VentaFormModal from '../components/ventas/VentaFormModal'
 
 // ── Constants ──────────────────────────────────────────
 const ITEMS_PER_PAGE = 50
@@ -34,20 +34,20 @@ export default function VentasPage() {
     // HOOK
     // ─────────────────────────────────────────────────────
     const {
-        reservas,
-        operadores, tours, opcionalesList, descuentosList,
+        ventas,
+        asesores, productos, extrasList, descuentosList,
         loading,
         loadData,
         // Form
         showForm, setShowForm,
-        editingReserva,
+        editingVenta,
         formData, setFormData,
         openForm,
         handleSave,
         handleDelete,
         handleInlineUpdate,
-        setToursList,
-        setOpcionalesLista,
+        setProductosList,
+        setextrasLista,
         handlePaxChange,
         // Comm Hub
         commModal, setCommModal,
@@ -61,17 +61,17 @@ export default function VentasPage() {
         handleSendEmail,
         // PDF
         voucherRef,
-        pdfReserva,
+        pdfVenta,
         pdfGeneratingId,
         handleDescargarPdf,
-    } = useReservasData({ agencia, showToast, setConfirmDialog })
+    } = useVentasData({ agencia, showToast, setConfirmDialog })
 
     // ─────────────────────────────────────────────────────
     // EFFECTS
     // ─────────────────────────────────────────────────────
     useEffect(() => {
         loadData()
-        if (location.state?.nuevaReserva) {
+        if (location.state?.nuevaVenta) {
             openForm(null)
             navigate(location.pathname, { replace: true, state: {} })
         }
@@ -81,12 +81,12 @@ export default function VentasPage() {
     // ─────────────────────────────────────────────────────
     // FILTER + PAGINATION
     // ─────────────────────────────────────────────────────
-    const filtered = reservas.filter(r => {
+    const filtered = ventas.filter(r => {
         if (!search) return true
         const s        = search.toLowerCase()
-        const toursStr = r.reserva_tours?.map(rt => tours.find(t => t.id === rt.tour_id)?.nombre).filter(Boolean).join(' ') || ''
+        const productosStr = r.venta_productos?.map(rt => productos.find(t => t.id === rt.producto_id)?.nombre).filter(Boolean).join(' ') || ''
         return r.cliente_nombre?.toLowerCase().includes(s) ||
-               toursStr.toLowerCase().includes(s) ||
+               productosStr.toLowerCase().includes(s) ||
                r.cliente_telefono?.includes(s)
     })
 
@@ -96,11 +96,11 @@ export default function VentasPage() {
     // ─────────────────────────────────────────────────────
     // TABLE ROW OPTIONS (computed outside render loop for perf)
     // ─────────────────────────────────────────────────────
-    const opOptions   = [{ value: '', label: 'Ninguno' }, ...operadores.map(o => ({ value: o.id, label: o.nombre }))]
+    const opOptions   = [{ value: '', label: 'Ninguno' }, ...asesores.map(o => ({ value: o.id, label: o.nombre }))]
     const idiOptions  = [{ value: 'ES', label: 'ES' }, { value: 'EN', label: 'EN' }, { value: 'PT', label: 'PT' }]
     const descOptions = [{ value: '', label: 'Ninguno' }, ...descuentosList.map(d => ({ value: d.nombre, label: `${d.nombre} (${d.tipo === 'porcentaje' ? d.descuento_web + '%' : '-$' + d.descuento_web})` }))]
-    const toursOptions = tours.map(t => ({ value: t.id, label: t.nombre }))
-    const opcOptions   = opcionalesList.map(o => ({ value: o.id, label: o.nombre }))
+    const productosOptions = productos.map(t => ({ value: t.id, label: t.nombre }))
+    const opcOptions   = extrasList.map(o => ({ value: o.id, label: o.nombre }))
 
 
     // ─────────────────────────────────────────────────────
@@ -160,21 +160,21 @@ export default function VentasPage() {
                                 <tr>
                                     <th>Fecha Entrega</th>
                                     <th>Cliente</th>
-                                    <th style={{ textAlign: 'center' }}>Pax/Cant</th>
+                                    <th style={{ textAlign: 'center' }}>Cant.</th>
                                     <th>Producto Vendido</th>
-                                    <th>Opcionales</th>
+                                    <th>extras</th>
                                     <th>Descuentos</th>
                                     <th>Precio Venta</th>
-                                    <th>Costo Operador</th>
+                                    <th>Costo Asesor</th>
                                     <th>Adelanto Cliente</th>
                                     <th>Saldo Cliente</th>
-                                    <th>Pago a Operador</th>
-                                    <th>Operador Devuelve</th>
+                                    <th>Pago a Asesor</th>
+                                    <th>Asesor Devuelve</th>
                                     <th>Beneficio</th>
-                                    <th>Operador</th>
+                                    <th>Asesor</th>
                                     <th>Idioma</th>
                                     <th>Confirmación Cliente</th>
-                                    <th>Reserva Operador</th>
+                                    <th>Venta Asesor</th>
                                     <th>Edición</th>
                                 </tr>
                             </thead>
@@ -182,7 +182,7 @@ export default function VentasPage() {
                                 {paginated.map(r => {
                                     // G-Sheet financial formulas
                                     const precio   = parseFloat(r.precio_venta || 0)
-                                    const costo    = parseFloat(r.costo_operador || 0)
+                                    const costo    = parseFloat(r.costo_asesor || 0)
                                     const adelanto = parseFloat(r.adelanto || 0)
                                     const saldoX   = precio - adelanto
                                     const diff     = costo - saldoX
@@ -193,7 +193,7 @@ export default function VentasPage() {
                                     return (
                                         <tr key={r.id}>
                                             <td style={{ padding: 4 }}>
-                                                <CellInput type="date" value={r.reserva_tours?.length > 0 ? (r.reserva_tours[0].fecha_tour || '') : (r.fecha_tour || '')} onChange={v => handleInlineUpdate(r.id, 'fecha_tour', v, r)} minWidth={110} />
+                                                <CellInput type="date" value={r.venta_productos?.length > 0 ? (r.venta_productos[0].fecha_servicio || '') : (r.fecha_servicio || '')} onChange={v => handleInlineUpdate(r.id, 'fecha_servicio', v, r)} minWidth={110} />
                                             </td>
                                             <td style={{ padding: 4 }}>
                                                 <CellInput value={r.cliente_nombre} onChange={v => handleInlineUpdate(r.id, 'cliente_nombre', v, r)} minWidth={120} />
@@ -205,9 +205,9 @@ export default function VentasPage() {
                                                 <CellInput 
                                                     isSelect 
                                                     isMulti 
-                                                    options={toursOptions} 
-                                                    value={r.reserva_tours?.map(rt => rt.tour_id).join(', ')} 
-                                                    onChange={v => handleInlineUpdate(r.id, 'inline_tours', v, r)} 
+                                                    options={productosOptions} 
+                                                    value={r.venta_productos?.map(rt => rt.producto_id).join(', ')} 
+                                                    onChange={v => handleInlineUpdate(r.id, 'inline_productos', v, r)} 
                                                     minWidth={240} 
                                                 />
                                             </td>
@@ -216,8 +216,8 @@ export default function VentasPage() {
                                                     isSelect 
                                                     isMulti 
                                                     options={opcOptions} 
-                                                    value={r.reserva_opcionales?.map(ro => ro.opcional_id).join(', ')} 
-                                                    onChange={v => handleInlineUpdate(r.id, 'inline_opcionales', v, r)} 
+                                                    value={r.venta_extras?.map(ro => ro.extra_id).join(', ')} 
+                                                    onChange={v => handleInlineUpdate(r.id, 'inline_extras', v, r)} 
                                                     minWidth={180} 
                                                 />
                                             </td>
@@ -231,7 +231,7 @@ export default function VentasPage() {
                                             </td>
                                             <td style={{ padding: 4 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 80, color: 'var(--color-text-muted)' }}>$
-                                                    <CellInput type="number" value={r.costo_operador} onChange={v => handleInlineUpdate(r.id, 'costo_operador', v, r)} minWidth={60} />
+                                                    <CellInput type="number" value={r.costo_asesor} onChange={v => handleInlineUpdate(r.id, 'costo_asesor', v, r)} minWidth={60} />
                                                 </div>
                                             </td>
                                             <td style={{ padding: 4 }}>
@@ -250,7 +250,7 @@ export default function VentasPage() {
                                             </td>
                                             <td style={{ fontWeight: 700, color: 'var(--color-text)', verticalAlign: 'middle' }}>${vBenef.toFixed(2)}</td>
                                             <td style={{ padding: 4 }}>
-                                                <CellInput isSelect options={opOptions} value={r.operador_id} onChange={v => handleInlineUpdate(r.id, 'operador_id', v, r)} minWidth={120} />
+                                                <CellInput isSelect options={opOptions} value={r.asesor_id} onChange={v => handleInlineUpdate(r.id, 'asesor_id', v, r)} minWidth={120} />
                                             </td>
                                             <td style={{ padding: 4 }}>
                                                 <CellInput isSelect options={idiOptions} value={r.idioma} onChange={v => handleInlineUpdate(r.id, 'idioma', v, r)} minWidth={60} />
@@ -270,14 +270,14 @@ export default function VentasPage() {
                                                 )}
                                             </td>
 
-                                            {/* Comm Hub — Operador */}
+                                            {/* Comm Hub — Asesor */}
                                             <td style={{ textAlign: 'center', fontSize: '0.8rem', verticalAlign: 'middle' }}>
-                                                {r.reserva_operador_enviada ? (
+                                                {r.venta_asesor_enviada ? (
                                                     <span style={{ color: 'var(--color-success)', fontWeight: 500 }}>
-                                                        ✅ {new Date(r.reserva_operador_enviada).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                        ✅ {new Date(r.venta_asesor_enviada).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                                     </span>
                                                 ) : (
-                                                    <button className="btn btn-secondary btn-sm" onClick={() => openCommHub(r, 'operador')} style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
+                                                    <button className="btn btn-secondary btn-sm" onClick={() => openCommHub(r, 'asesor')} style={{ padding: '4px 8px', fontSize: '0.75rem' }}>
                                                         🚚 Enviar
                                                     </button>
                                                 )}
@@ -315,18 +315,18 @@ export default function VentasPage() {
                 )}
 
                 {/* ── Modals ── */}
-                <ReservaFormModal
+                <VentaFormModal
                     show={showForm}
-                    editingReserva={editingReserva}
+                    editingVenta={editingVenta}
                     formData={formData}
                     setFormData={setFormData}
                     handleSave={handleSave}
-                    tours={tours}
-                    operadores={operadores}
-                    opcionalesList={opcionalesList}
+                    productos={productos}
+                    asesores={asesores}
+                    extrasList={extrasList}
                     descuentosList={descuentosList}
-                    setToursList={setToursList}
-                    setOpcionalesLista={setOpcionalesLista}
+                    setProductosList={setProductosList}
+                    setextrasLista={setextrasLista}
                     handlePaxChange={handlePaxChange}
                     onClose={() => setShowForm(false)}
                 />
@@ -334,8 +334,8 @@ export default function VentasPage() {
                 <CommHubModal
                     commModal={commModal}
                     setCommModal={setCommModal}
-                    operadores={operadores}
-                    tours={tours}
+                    asesores={asesores}
+                    productos={productos}
                     commSelectedTipo={commSelectedTipo}
                     handleCommTipoChange={handleCommTipoChange}
                     commLoading={commLoading}
@@ -347,8 +347,8 @@ export default function VentasPage() {
                 />
 
                 {/* ── Hidden PDF Renderer ── */}
-                {pdfGeneratingId && pdfReserva && (
-                    <PdfVoucher ref={voucherRef} reserva={pdfReserva} agencia={agencia} />
+                {pdfGeneratingId && pdfVenta && (
+                    <PdfVoucher ref={voucherRef} venta={pdfVenta} agencia={agencia} />
                 )}
             </div>
         </>

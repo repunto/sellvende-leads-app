@@ -244,7 +244,7 @@ export default function LeadDetailPanel({
                         </div>
                     )}
 
-                {/* Score + Tour cards */}
+                {/* Score + Producto cards */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
                         <div style={{ background: 'var(--color-bg-hover)', padding: 16, borderRadius: 12, border: '1px solid var(--color-border)' }}>
                             <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>Score del Lead</div>
@@ -253,9 +253,9 @@ export default function LeadDetailPanel({
                             </div>
                         </div>
                         <div style={{ background: 'var(--color-bg-hover)', padding: 16, borderRadius: 12, border: '1px solid var(--color-border)' }}>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>Tour Cotizado</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>Producto Cotizado</div>
                             <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                {detailLead.tour_nombre || 'No especificado'}
+                                {detailLead.producto_interes || 'No especificado'}
                             </div>
                         </div>
                     </div>
@@ -358,11 +358,11 @@ export default function LeadDetailPanel({
                     <EmailTimeline detailEmails={detailEmails} />
                 </div>
 
-                {/* ── Footer — Editar + Reservar + Bounce Toggle ── */}
+                {/* ── Footer — Editar + Ventar + Bounce Toggle ── */}
                 <div style={{ padding: '16px 24px', borderTop: '1px solid var(--color-border)', background: 'var(--color-bg-card)', display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => openForm(detailLead)}>✏️ Editar</button>
-                        <Link to="/reservas" state={{ convertLead: detailLead }} className="btn btn-success" style={{ flex: 1, textAlign: 'center' }}>🎫 Reservar</Link>
+                        <Link to="/ventas" state={{ convertLead: detailLead }} className="btn btn-success" style={{ flex: 1, textAlign: 'center' }}>🎫 Ventar</Link>
                     </div>
                     {/* Manual bounce toggle — visible only when email exists and NOT already bounced */}
                     {detailLead.email && !detailLead.email_rebotado && (

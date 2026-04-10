@@ -122,7 +122,7 @@ export default function LeadsTableView({
                                     }}>🚫 Baja</span>
                                 )}
                             </td>
-                            <td>{lead.tour_nombre || '—'}</td>
+                            <td>{lead.producto_interes || '—'}</td>
                             <td><OrigenBadge origen={lead.origen} formName={lead.form_name} /></td>
                             <td><ScoreBadge score={getLeadScore(lead)} /></td>
                             <td><span className={badgeClass(lead.estado)}>{lead.estado}</span></td>
@@ -188,9 +188,9 @@ export default function LeadsTableView({
                                         )
                                     })()}
                                     <Link
-                                        to="/reservas"
+                                        to="/ventas"
                                         state={{ convertLead: lead }}
-                                        title="Convertir a Reserva"
+                                        title="Convertir a Venta"
                                         style={{
                                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                             width: 28, height: 28, borderRadius: 6,

@@ -21,7 +21,7 @@ export default function ProductosPage() {
     async function loadProductos() {
         setLoading(true)
         const { data, error } = await supabase
-            .from('tours')
+            .from('productos')
             .select('*')
             .order('created_at', { ascending: false })
 
@@ -39,12 +39,12 @@ export default function ProductosPage() {
         const updatedItem = updatedList.find(item => item.id === id)
 
         try {
-            const { error } = await supabase.from('tours')
+            const { error } = await supabase.from('productos')
                 .update({
                     nombre: updatedItem.nombre,
                     duracion_dias: updatedItem.duracion_dias,
                     precio_usd: updatedItem.precio_usd,
-                    costo_operador: updatedItem.costo_operador,
+                    costo_asesor: updatedItem.costo_asesor,
                     activo: updatedItem.activo
                 })
                 .eq('id', id)
@@ -73,11 +73,11 @@ export default function ProductosPage() {
                 nombre: 'Nuevo Producto/Servicio',
                 duracion_dias: 1,
                 precio_usd: 0,
-                costo_operador: 0,
+                costo_asesor: 0,
                 activo: true
             }
 
-            const { data, error } = await supabase.from('tours').insert([newRow]).select()
+            const { data, error } = await supabase.from('productos').insert([newRow]).select()
             if (error) throw error
 
             setProductos([...productos, data[0]])
@@ -97,7 +97,7 @@ export default function ProductosPage() {
             onConfirm: async () => {
                 setConfirmDialog(null)
                 try {
-                    const { error } = await supabase.from('tours').delete().eq('id', id)
+                    const { error } = await supabase.from('productos').delete().eq('id', id)
                     if (error) throw error
                     showToast('Producto eliminado')
                     loadProductos()
@@ -203,8 +203,8 @@ export default function ProductosPage() {
                                                 <span style={{ color: 'var(--color-text-muted)', paddingLeft: '8px', fontSize: '0.85rem' }}>$</span>
                                                 <CellInput
                                                     type="number"
-                                                    value={parseFloat(prod.costo_operador || 0)}
-                                                    onChange={(val) => handleInlineUpdate(prod.id, 'costo_operador', val)}
+                                                    value={parseFloat(prod.costo_asesor || 0)}
+                                                    onChange={(val) => handleInlineUpdate(prod.id, 'costo_asesor', val)}
                                                     minWidth={50}
                                                 />
                                             </div>

@@ -3,11 +3,11 @@ import { supabase } from '../lib/supabase'
 import ConfirmModal from '../components/leads/modals/ConfirmModal'
 import SkeletonTable from '../components/SkeletonTable'
 
-export default function OperadoresPage() {
-    const [operadores, setOperadores] = useState([])
+export default function AsesoresPage() {
+    const [asesores, setAsesores] = useState([])
     const [loading, setLoading] = useState(true)
     const [showForm, setShowForm] = useState(false)
-    const [editingOperador, setEditingOperador] = useState(null)
+    const [editingAsesor, setEditingAsesor] = useState(null)
     const [toast, setToast] = useState(null)
     const [confirmDialog, setConfirmDialog] = useState(null)
 
@@ -23,30 +23,30 @@ export default function OperadoresPage() {
         setTimeout(() => setToast(null), 3000)
     }
 
-    useEffect(() => { loadOperadores() }, [])
+    useEffect(() => { loadAsesores() }, [])
 
-    async function loadOperadores() {
+    async function loadAsesores() {
         setLoading(true)
         const { data, error } = await supabase
-            .from('operadores')
+            .from('asesores')
             .select('*')
             .order('created_at', { ascending: false })
 
-        if (!error && data) setOperadores(data)
+        if (!error && data) setAsesores(data)
         setLoading(false)
     }
 
-    function openForm(operador = null) {
-        if (operador) {
-            setEditingOperador(operador)
+    function openForm(asesor = null) {
+        if (asesor) {
+            setEditingAsesor(asesor)
             setFormData({
-                nombre: operador.nombre || '',
-                telefono: operador.telefono || '',
-                email: operador.email || '',
-                activo: operador.activo
+                nombre: asesor.nombre || '',
+                telefono: asesor.telefono || '',
+                email: asesor.email || '',
+                activo: asesor.activo
             })
         } else {
-            setEditingOperador(null)
+            setEditingAsesor(null)
             setFormData({
                 nombre: '',
                 telefono: '',
@@ -60,17 +60,17 @@ export default function OperadoresPage() {
     async function handleSave(e) {
         e.preventDefault()
         try {
-            if (editingOperador) {
-                const { error } = await supabase.from('operadores').update(formData).eq('id', editingOperador.id)
+            if (editingAsesor) {
+                const { error } = await supabase.from('asesores').update(formData).eq('id', editingAsesor.id)
                 if (error) throw error
-                showToast('Operador actualizado correctamente')
+                showToast('Asesor actualizado correctamente')
             } else {
-                const { error } = await supabase.from('operadores').insert([formData])
+                const { error } = await supabase.from('asesores').insert([formData])
                 if (error) throw error
-                showToast('Operador creado exitosamente')
+                showToast('Asesor creado exitosamente')
             }
             setShowForm(false)
-            loadOperadores()
+            loadAsesores()
         } catch (error) {
             console.error(error)
             alert('Error al guardar: ' + error.message)
@@ -79,17 +79,17 @@ export default function OperadoresPage() {
 
     async function handleDelete(id) {
         setConfirmDialog({
-            title: 'Eliminar Operador',
-            message: '¿Eliminar este operador? Esta acción no se puede deshacer.',
+            title: 'Eliminar Asesor',
+            message: '¿Eliminar este asesor? Esta acción no se puede deshacer.',
             danger: true,
             confirmLabel: '🗑 Eliminar',
             onConfirm: async () => {
                 setConfirmDialog(null)
                 try {
-                    const { error } = await supabase.from('operadores').delete().eq('id', id)
+                    const { error } = await supabase.from('asesores').delete().eq('id', id)
                     if (error) throw error
-                    showToast('Operador eliminado')
-                    loadOperadores()
+                    showToast('Asesor eliminado')
+                    loadAsesores()
                 } catch (error) {
                     console.error(error)
                     alert('Error al eliminar: ' + error.message)
@@ -108,22 +108,22 @@ export default function OperadoresPage() {
 
             <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 className="page-title">Operadores</h1>
+                    <h1 className="page-title">Asesores</h1>
                     <p className="page-subtitle">Gestiona tus proveedores terrestres y mayoristas</p>
                 </div>
                 <button className="btn btn-primary" onClick={() => openForm(null)}>
-                    + Nuevo Operador
+                    + Nuevo Asesor
                 </button>
             </div>
 
             <div className="page-body">
                 {loading ? (
                     <SkeletonTable rows={5} columns={5} />
-                ) : operadores.length === 0 ? (
+                ) : asesores.length === 0 ? (
                     <div className="empty-state">
                         <div className="empty-state-icon">🚌</div>
-                        <div className="empty-state-text">No tienes operadores registrados</div>
-                        <div className="empty-state-sub">Agrega a tus proveedores para asignarles reservas.</div>
+                        <div className="empty-state-text">No tienes asesores registrados</div>
+                        <div className="empty-state-sub">Agrega a tus proveedores para asignarles ventas.</div>
                     </div>
                 ) : (
                     <div className="table-container">
@@ -138,7 +138,7 @@ export default function OperadoresPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {operadores.map(op => (
+                                {asesores.map(op => (
                                     <tr key={op.id}>
                                         <td style={{ fontWeight: 600, color: 'var(--color-text)' }}>{op.nombre}</td>
                                         <td>{op.telefono || '—'}</td>
@@ -161,12 +161,12 @@ export default function OperadoresPage() {
                     </div>
                 )}
 
-                {/* Modal Formulario Operador */}
+                {/* Modal Formulario Asesor */}
                 {showForm && (
                     <div className="modal-overlay" onClick={() => setShowForm(false)}>
                         <div className="modal-content modal-content-sm" onClick={(e) => e.stopPropagation()}>
                             <h2>
-                                {editingOperador ? 'Editar Operador' : 'Nuevo Operador'}
+                                {editingAsesor ? 'Editar Asesor' : 'Nuevo Asesor'}
                             </h2>
                             <form onSubmit={handleSave}>
                                 <div className="form-group">
@@ -178,8 +178,8 @@ export default function OperadoresPage() {
                                     <input className="form-input" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} placeholder="Ej. +51987654321" />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Email de Reservas</label>
-                                    <input className="form-input" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="reservas@empresa.com" />
+                                    <label className="form-label">Email de Ventas</label>
+                                    <input className="form-input" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="ventas@empresa.com" />
                                 </div>
 
                                 <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
@@ -190,13 +190,13 @@ export default function OperadoresPage() {
                                         onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
                                         style={{ width: 16, height: 16, accentColor: 'var(--color-accent)' }}
                                     />
-                                    <label htmlFor="op-activo" style={{ fontSize: '0.9rem', color: 'var(--color-text)' }}>Operador activo</label>
+                                    <label htmlFor="op-activo" style={{ fontSize: '0.9rem', color: 'var(--color-text)' }}>Asesor activo</label>
                                 </div>
 
                                 <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24 }}>
                                     <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Cancelar</button>
                                     <button type="submit" className="btn btn-primary">
-                                        {editingOperador ? 'Guardar Cambios' : 'Crear Operador'}
+                                        {editingAsesor ? 'Guardar Cambios' : 'Crear Asesor'}
                                     </button>
                                 </div>
                             </form>

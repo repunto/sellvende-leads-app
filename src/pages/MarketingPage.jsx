@@ -22,7 +22,7 @@ export default function MarketingPage() {
     const [loadingSecs, setLoadingSecs] = useState(true)
     const [showSecuenciaForm, setShowSecuenciaForm] = useState(false)
     const [editingSecuencia, setEditingSecuencia] = useState(null)
-    const [secuenciaForm, setSecuenciaForm] = useState({ nombre: '', descripcion: '', activa: true, tour_match: '' })
+    const [secuenciaForm, setSecuenciaForm] = useState({ nombre: '', descripcion: '', activa: true, producto_match: '' })
 
     const [pasos, setPasos] = useState([])
     const [plantillasEmail, setPlantillasEmail] = useState([])
@@ -69,7 +69,7 @@ export default function MarketingPage() {
             if (e.key === 'Escape' && showSecuenciaForm) {
                 setShowSecuenciaForm(false);
                 setEditingSecuencia(null);
-                setSecuenciaForm({ nombre: '', descripcion: '', activa: true, tour_match: '' });
+                setSecuenciaForm({ nombre: '', descripcion: '', activa: true, producto_match: '' });
                 setPasos([]);
             }
         };
@@ -80,11 +80,11 @@ export default function MarketingPage() {
 
     async function loadMetaForms() {
         const { data } = await supabase.from('leads')
-            .select('form_name, tour_nombre')
-            .or('form_name.not.is.null,tour_nombre.not.is.null');
+            .select('form_name, producto_interes')
+            .or('form_name.not.is.null,producto_interes.not.is.null');
             
         if (data && data.length > 0) {
-            const unique = [...new Set(data.flatMap(d => [d.form_name, d.tour_nombre]).filter(n => !!n))].sort();
+            const unique = [...new Set(data.flatMap(d => [d.form_name, d.producto_interes]).filter(n => !!n))].sort();
             setMetaForms(unique);
         }
     }
@@ -240,11 +240,11 @@ export default function MarketingPage() {
     function openForm(secuencia = null) {
         if (secuencia) {
             setEditingSecuencia(secuencia)
-            setSecuenciaForm({ nombre: secuencia.nombre, descripcion: secuencia.descripcion || '', activa: secuencia.activa, tour_match: secuencia.tour_match || secuencia.nombre || '' })
+            setSecuenciaForm({ nombre: secuencia.nombre, descripcion: secuencia.descripcion || '', activa: secuencia.activa, producto_match: secuencia.producto_match || secuencia.nombre || '' })
             setPasos(secuencia.pasos?.sort((a,b) => a.dia_envio - b.dia_envio) || [])
         } else {
             setEditingSecuencia(null)
-            setSecuenciaForm({ nombre: '', descripcion: '', activa: true, tour_match: '' })
+            setSecuenciaForm({ nombre: '', descripcion: '', activa: true, producto_match: '' })
             setPasos([])
         }
         setShowSecuenciaForm(true)
@@ -253,7 +253,7 @@ export default function MarketingPage() {
     async function handleSaveSecuencia(e) {
         e.preventDefault()
         try {
-            const payload = { ...secuenciaForm, agencia_id: agencia.id, nombre: secuenciaForm.tour_match || 'Secuencia' }
+            const payload = { ...secuenciaForm, agencia_id: agencia.id, nombre: secuenciaForm.producto_match || 'Secuencia' }
             let secId = null
 
             if (editingSecuencia) {
@@ -338,7 +338,7 @@ export default function MarketingPage() {
         const [invResp, leadsResp, resResp] = await Promise.all([
             supabase.from('inversion_marketing').select('*').eq('agencia_id', agencia.id).order('anio', { ascending: false }).order('mes', { ascending: false }),
             supabase.from('leads').select('id, origen, campaign_name, created_at').eq('agencia_id', agencia.id),
-            supabase.from('reservas').select('id, lead_id, precio_venta, estado').eq('agencia_id', agencia.id).in('estado', ['confirmada', 'completada', 'pagada'])
+            supabase.from('ventas').select('id, lead_id, precio_venta, estado').eq('agencia_id', agencia.id).in('estado', ['confirmada', 'completada', 'pagada'])
         ])
 
         const inv = invResp.data || []
@@ -417,8 +417,8 @@ export default function MarketingPage() {
         })
     }
 
-    const filteredEmail = plantillasEmail.filter(t => t.origen === secuenciaForm.tour_match);
-    const filteredWA = plantillasWA.filter(t => t.origen === secuenciaForm.tour_match);
+    const filteredEmail = plantillasEmail.filter(t => t.origen === secuenciaForm.producto_match);
+    const filteredWA = plantillasWA.filter(t => t.origen === secuenciaForm.producto_match);
 
     return (
         <>
@@ -462,7 +462,7 @@ export default function MarketingPage() {
                                 <button type="button" className="btn btn-ghost" onClick={() => {
                                     setShowSecuenciaForm(false);
                                     setEditingSecuencia(null);
-                                    setSecuenciaForm({ nombre: '', descripcion: '', activa: true, tour_match: '' });
+                                    setSecuenciaForm({ nombre: '', descripcion: '', activa: true, producto_match: '' });
                                     setPasos([]);
                                 }} style={{ padding: '8px 16px', borderRadius: 10, fontWeight: 600 }}>Cancelar</button>
                                 <button type="submit" form="secForm" className="btn btn-primary" style={{ padding: '8px 24px', borderRadius: 10, fontWeight: 700, boxShadow: '0 4px 12px rgba(250, 114, 55, 0.25)', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -490,10 +490,10 @@ export default function MarketingPage() {
                                             <div style={{ position: 'relative' }}>
                                                 <select
                                                     className="form-control"
-                                                    value={secuenciaForm.tour_match}
+                                                    value={secuenciaForm.producto_match}
                                                     onChange={(e) => {
                                                         const val = e.target.value;
-                                                        setSecuenciaForm({ ...secuenciaForm, tour_match: val, nombre: val });
+                                                        setSecuenciaForm({ ...secuenciaForm, producto_match: val, nombre: val });
                                                         // Auto-add first step if none exist when a form is explicitly chosen
                                                         if (val && pasos.length === 0) {
                                                             setPasos([{ dia_envio: 1, plantilla_email_id: '', plantilla_whatsapp_id: '' }]);
@@ -511,7 +511,7 @@ export default function MarketingPage() {
                                     </div>
                                     
                                     <div className="form-group" style={{ marginBottom: 20 }}>
-                                        <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 8 }}>Descripción (Opcional)</label>
+                                        <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 8 }}>Descripción (Extra)</label>
                                         <textarea
                                             className="form-control"
                                             value={secuenciaForm.descripcion}
@@ -735,7 +735,7 @@ export default function MarketingPage() {
                                                 <td style={{ padding: '24px 20px', border: 'none', borderTopLeftRadius: 16, borderBottomLeftRadius: 16 }}>
                                                     <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-text)', marginBottom: 6 }}>{s.nombre}</div>
                                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                                                        {s.tour_match ? s.tour_match.split(',').map((tag, i) => (
+                                                        {s.producto_match ? s.producto_match.split(',').map((tag, i) => (
                                                             <span key={i} style={{ fontSize: '0.7rem', fontWeight: 700, background: 'var(--color-primary-soft)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase' }}>
                                                                 📋 {tag.trim()}
                                                             </span>

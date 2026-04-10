@@ -49,7 +49,7 @@ export default function DescuentosPage() {
                 .update({
                     nombre: updatedItem.nombre,
                     descuento_web: updatedItem.descuento_web,
-                    descuento_operador: updatedItem.descuento_operador,
+                    descuento_asesor: updatedItem.descuento_asesor,
                     tipo: updatedItem.tipo,
                     aplicabilidad: updatedItem.aplicabilidad,
                     activo: updatedItem.activo
@@ -75,9 +75,9 @@ export default function DescuentosPage() {
                 agencia_id: profile.agencia_id,
                 nombre: 'Nuevo Descuento',
                 descuento_web: 0,
-                descuento_operador: 0,
+                descuento_asesor: 0,
                 tipo: 'fijo',
-                aplicabilidad: 'Por Pasajero',
+                aplicabilidad: 'Por Unidad',
                 activo: true
             }
 
@@ -134,13 +134,13 @@ export default function DescuentosPage() {
             await supabase.from('descuentos').delete().eq('agencia_id', agenciaId)
 
             const descuentosList = [
-                { agencia_id: agenciaId, nombre: 'Estudiante Universitario', descuento_web: 20, descuento_operador: 20, tipo: 'fijo', aplicabilidad: 'Por Pasajero' },
-                { agencia_id: agenciaId, nombre: 'Peruano / DNI', descuento_web: 30, descuento_operador: 30, tipo: 'fijo', aplicabilidad: 'Por Pasajero' },
-                { agencia_id: agenciaId, nombre: 'Comunidad Andina', descuento_web: 20, descuento_operador: 20, tipo: 'fijo', aplicabilidad: 'Por Pasajero' },
-                { agencia_id: agenciaId, nombre: 'Menor de Edad (3-10 años)', descuento_web: 10, descuento_operador: 10, tipo: 'fijo', aplicabilidad: 'Por Pasajero' },
-                { agencia_id: agenciaId, nombre: 'Grupo Mayor de 5 pax', descuento_web: 5, descuento_operador: 5, tipo: 'porcentaje', aplicabilidad: 'Manual' },
-                { agencia_id: agenciaId, nombre: 'Grupo Mayor de 10 pax', descuento_web: 10, descuento_operador: 10, tipo: 'porcentaje', aplicabilidad: 'Manual' },
-                { agencia_id: agenciaId, nombre: 'Machupicchu Discount', descuento_web: 40, descuento_operador: 40, tipo: 'fijo', aplicabilidad: 'Por Pasajero' },
+                { agencia_id: agenciaId, nombre: 'Estudiante Universitario', descuento_web: 20, descuento_asesor: 20, tipo: 'fijo', aplicabilidad: 'Por Unidad' },
+                { agencia_id: agenciaId, nombre: 'Peruano / DNI', descuento_web: 30, descuento_asesor: 30, tipo: 'fijo', aplicabilidad: 'Por Unidad' },
+                { agencia_id: agenciaId, nombre: 'Comunidad Andina', descuento_web: 20, descuento_asesor: 20, tipo: 'fijo', aplicabilidad: 'Por Unidad' },
+                { agencia_id: agenciaId, nombre: 'Menor de Edad (3-10 años)', descuento_web: 10, descuento_asesor: 10, tipo: 'fijo', aplicabilidad: 'Por Unidad' },
+                { agencia_id: agenciaId, nombre: 'Grupo Mayor de 5 pax', descuento_web: 5, descuento_asesor: 5, tipo: 'porcentaje', aplicabilidad: 'Manual' },
+                { agencia_id: agenciaId, nombre: 'Grupo Mayor de 10 pax', descuento_web: 10, descuento_asesor: 10, tipo: 'porcentaje', aplicabilidad: 'Manual' },
+                { agencia_id: agenciaId, nombre: 'Machupicchu Discount', descuento_web: 40, descuento_asesor: 40, tipo: 'fijo', aplicabilidad: 'Por Unidad' },
             ]
 
             const { error: insertErr } = await supabase.from('descuentos').insert(descuentosList)
@@ -168,7 +168,7 @@ export default function DescuentosPage() {
             <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <h1 className="page-title">Descuentos</h1>
-                    <p className="page-subtitle">Administra descuentos aplicables a tours y reservas</p>
+                    <p className="page-subtitle">Administra descuentos aplicables a productos y ventas</p>
                 </div>
                 <div style={{ display: 'flex', gap: 12 }}>
                     <button className="btn btn-secondary" style={{ color: 'var(--color-warning)', borderColor: 'var(--color-warning)' }} onClick={handleSyncDescuentos}>
@@ -187,7 +187,7 @@ export default function DescuentosPage() {
                     <div className="empty-state">
                         <div className="empty-state-icon">🏷️</div>
                         <div className="empty-state-text">No tienes descuentos registrados</div>
-                        <div className="empty-state-sub">Agrega tus descuentos aquí para aplicarlos automáticamente en Reservas.</div>
+                        <div className="empty-state-sub">Agrega tus descuentos aquí para aplicarlos automáticamente en Ventas.</div>
                     </div>
                 ) : (
                     <div className="table-container">
@@ -245,8 +245,8 @@ export default function DescuentosPage() {
                                                 </span>
                                                 <CellInput
                                                     type="number"
-                                                    value={parseFloat(item.descuento_operador || 0)}
-                                                    onChange={(val) => handleInlineUpdate(item.id, 'descuento_operador', val)}
+                                                    value={parseFloat(item.descuento_asesor || 0)}
+                                                    onChange={(val) => handleInlineUpdate(item.id, 'descuento_asesor', val)}
                                                     minWidth={50}
                                                 />
                                                 {item.tipo === 'porcentaje' && (
@@ -271,7 +271,7 @@ export default function DescuentosPage() {
                                                 isSelect={true}
                                                 value={item.aplicabilidad}
                                                 options={[
-                                                    { value: 'Por Pasajero', label: '👤 Por Pasajero' },
+                                                    { value: 'Por Unidad', label: '👤 Por Unidad' },
                                                     { value: 'Manual', label: '✋ Manual' }
                                                 ]}
                                                 onChange={(val) => handleInlineUpdate(item.id, 'aplicabilidad', val)}

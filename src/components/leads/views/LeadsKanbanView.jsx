@@ -61,7 +61,7 @@ export default function LeadsKanbanView({
                                         <ScoreBadge score={getLeadScore(lead)} />
                                     </div>
                                     <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>
-                                        {lead.tour_nombre || '—'}
+                                        {lead.producto_interes || '—'}
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'space-between' }}>
                                         <OrigenBadge origen={lead.origen} formName={lead.form_name} />
@@ -72,9 +72,9 @@ export default function LeadsKanbanView({
                                                 </button>
                                             )}
                                             <Link
-                                                to="/reservas"
+                                                to="/ventas"
                                                 state={{ convertLead: lead }}
-                                                title="Convertir a Reserva"
+                                                title="Convertir a Venta"
                                                 style={{
                                                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                                                     width: 24, height: 24, borderRadius: 5,

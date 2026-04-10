@@ -61,13 +61,13 @@ function SkeletonCard({ height = 80 }) {
 export default function DashboardPage() {
     const { agencia } = useAuth()
     const [stats, setStats] = useState({
-        leadsHoy: 0, leadsTotal: 0, reservasTotal: 0,
+        leadsHoy: 0, leadsTotal: 0, ventasTotal: 0,
         ingresosMes: 0, costosMes: 0, utilidadMes: 0, winRate: 0,
         cplMes: 0
     })
     const [chartData, setChartData] = useState([])
-    const [topTours, setTopTours] = useState([])
-    const [proxReservas, setProxReservas] = useState([])
+    const [topProductos, setTopProductos] = useState([])
+    const [proxVentas, setProxVentas] = useState([])
     const [recentLeads, setRecentLeads] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -94,38 +94,38 @@ export default function DashboardPage() {
             const [
                 leadsCountResult,
                 leadsHoyResult,
-                reservasTotalResult,
-                reservasMesResult,
-                reservas6MResult,
+                ventasTotalResult,
+                ventasMesResult,
+                ventas6MResult,
                 recentLeadsResult,
                 inversionesMesResult,
                 leadsMesResult
             ] = await Promise.all([
                 supabase.from('leads').select('*', { count: 'exact', head: true }).eq('agencia_id', agencia.id),
                 supabase.from('leads').select('*', { count: 'exact', head: true }).eq('agencia_id', agencia.id).gte('created_at', today.toISOString()),
-                supabase.from('reservas').select('*', { count: 'exact', head: true }).eq('agencia_id', agencia.id),
-                supabase.from('reservas').select('precio_venta, costo_operador').eq('agencia_id', agencia.id).gte('created_at', firstOfMonth.toISOString()),
-                supabase.from('reservas').select('created_at, precio_venta, costo_operador').eq('agencia_id', agencia.id).gte('created_at', sixMonthsAgo.toISOString()),
+                supabase.from('ventas').select('*', { count: 'exact', head: true }).eq('agencia_id', agencia.id),
+                supabase.from('ventas').select('precio_venta, costo_asesor').eq('agencia_id', agencia.id).gte('created_at', firstOfMonth.toISOString()),
+                supabase.from('ventas').select('created_at, precio_venta, costo_asesor').eq('agencia_id', agencia.id).gte('created_at', sixMonthsAgo.toISOString()),
                 supabase.from('leads').select('id, nombre, origen, estado, created_at').eq('agencia_id', agencia.id).order('created_at', { ascending: false }).limit(4),
                 supabase.from('inversion_marketing').select('gasto_usd').eq('agencia_id', agencia.id).eq('mes', today.getMonth() + 1).eq('anio', today.getFullYear()),
                 supabase.from('leads').select('*', { count: 'exact', head: true }).eq('agencia_id', agencia.id).gte('created_at', firstOfMonth.toISOString())
             ])
 
             // Surface first critical error
-            const criticalError = [leadsCountResult, reservasTotalResult, reservasMesResult].find(r => r.error)
+            const criticalError = [leadsCountResult, ventasTotalResult, ventasMesResult].find(r => r.error)
             if (criticalError?.error) throw criticalError.error
 
             const leadsTotal = leadsCountResult.count || 0
             const leadsHoy = leadsHoyResult.count || 0
-            const reservasTotal = reservasTotalResult.count || 0
-            const reservasMes = reservasMesResult.data || []
-            const reservas6M = reservas6MResult.data || []
+            const ventasTotal = ventasTotalResult.count || 0
+            const ventasMes = ventasMesResult.data || []
+            const ventas6M = ventas6MResult.data || []
             const recentLeadsData = recentLeadsResult.data || []
 
-            const ingresosMes = reservasMes.reduce((s, r) => s + Number(r.precio_venta || 0), 0)
-            const costosMes = reservasMes.reduce((s, r) => s + Number(r.costo_operador || 0), 0)
+            const ingresosMes = ventasMes.reduce((s, r) => s + Number(r.precio_venta || 0), 0)
+            const costosMes = ventasMes.reduce((s, r) => s + Number(r.costo_asesor || 0), 0)
             const utilidadMes = ingresosMes - costosMes
-            const winRate = leadsTotal > 0 ? (reservasTotal / leadsTotal) * 100 : 0
+            const winRate = leadsTotal > 0 ? (ventasTotal / leadsTotal) * 100 : 0
             
             const inversionesMes = inversionesMesResult?.data || []
             const leadsMesCount = leadsMesResult?.count || 0
@@ -140,13 +140,13 @@ export default function DashboardPage() {
                 label = label.charAt(0).toUpperCase() + label.slice(1)
                 monthsMap[label] = { name: label, Ingresos: 0, Costos: 0, Utilidad: 0 }
             }
-            reservas6M.forEach(r => {
+            ventas6M.forEach(r => {
                 let label = new Date(r.created_at).toLocaleDateString('es-PE', { month: 'short' })
                 label = label.charAt(0).toUpperCase() + label.slice(1)
                 if (monthsMap[label]) {
                     monthsMap[label].Ingresos += Number(r.precio_venta || 0)
-                    monthsMap[label].Costos += Number(r.costo_operador || 0)
-                    monthsMap[label].Utilidad += (Number(r.precio_venta || 0) - Number(r.costo_operador || 0))
+                    monthsMap[label].Costos += Number(r.costo_asesor || 0)
+                    monthsMap[label].Utilidad += (Number(r.precio_venta || 0) - Number(r.costo_asesor || 0))
                 }
             })
             const cData = []
@@ -157,16 +157,16 @@ export default function DashboardPage() {
                 cData.push(monthsMap[label])
             }
 
-            // Top tours — graceful fallback if reserva_tours doesn't exist
+            // Top productos — graceful fallback if venta_productos doesn't exist
             let topList = []
             try {
-                const { data: rtours } = await supabase.from('tours').select('nombre, reserva_tours!inner(id)').eq('agencia_id', agencia.id)
-                const tourCounts = {}
-                ;(rtours || []).forEach(tour => {
-                    const name = tour.nombre
-                    if (name && tour.reserva_tours) tourCounts[name] = (tourCounts[name] || 0) + tour.reserva_tours.length
+                const { data: rproductos } = await supabase.from('productos').select('nombre, venta_productos!inner(id)').eq('agencia_id', agencia.id)
+                const productoCounts = {}
+                ;(rproductos || []).forEach(producto => {
+                    const name = producto.nombre
+                    if (name && producto.venta_productos) productoCounts[name] = (productoCounts[name] || 0) + producto.venta_productos.length
                 })
-                topList = Object.entries(tourCounts)
+                topList = Object.entries(productoCounts)
                     .sort((a, b) => b[1] - a[1])
                     .slice(0, 3)
                     .map(([nombre, ventas]) => ({ nombre, ventas }))
@@ -174,29 +174,29 @@ export default function DashboardPage() {
                 // Table may not exist — not critical
             }
 
-            // Próximas reservas — graceful fallback
+            // Próximas ventas — graceful fallback
             let proxList = []
             try {
                 const nextWeek = new Date(today)
                 nextWeek.setDate(nextWeek.getDate() + 7)
                 const { data: proxRaw } = await supabase
-                    .from('tours')
-                    .select('nombre, reserva_tours!inner(fecha_tour, reservas:reserva_id (cliente_nombre, pax))')
+                    .from('productos')
+                    .select('nombre, venta_productos!inner(fecha_servicio, ventas:venta_id (cliente_nombre, pax))')
                     .eq('agencia_id', agencia.id)
-                    .gte('reserva_tours.fecha_tour', today.toISOString().split('T')[0])
-                    .lte('reserva_tours.fecha_tour', nextWeek.toISOString().split('T')[0])
+                    .gte('venta_productos.fecha_servicio', today.toISOString().split('T')[0])
+                    .lte('venta_productos.fecha_servicio', nextWeek.toISOString().split('T')[0])
                     // order clause removed as filtering across nested relationships with order is complex, we will sort in memory
                 
                 let flatProx = []
-                ;(proxRaw || []).forEach(tour => {
-                    if (tour.reserva_tours) {
-                        tour.reserva_tours.forEach(rt => {
+                ;(proxRaw || []).forEach(producto => {
+                    if (producto.venta_productos) {
+                        producto.venta_productos.forEach(rt => {
                             flatProx.push({
-                                fecha_raw: rt.fecha_tour,
-                                fecha: new Date(rt.fecha_tour).toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' }),
-                                tour: tour.nombre || 'Desconocido',
-                                cliente: rt.reservas?.cliente_nombre || 'Desconocido',
-                                pax: rt.reservas?.pax || 1
+                                fecha_raw: rt.fecha_servicio,
+                                fecha: new Date(rt.fecha_servicio).toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' }),
+                                producto: producto.nombre || 'Desconocido',
+                                cliente: rt.ventas?.cliente_nombre || 'Desconocido',
+                                pax: rt.ventas?.pax || 1
                             })
                         })
                     }
@@ -206,10 +206,10 @@ export default function DashboardPage() {
                 // Table may not exist — not critical
             }
 
-            setStats({ leadsHoy, leadsTotal, reservasTotal, ingresosMes, costosMes, utilidadMes, winRate, cplMes })
+            setStats({ leadsHoy, leadsTotal, ventasTotal, ingresosMes, costosMes, utilidadMes, winRate, cplMes })
             setChartData(cData)
-            setTopTours(topList)
-            setProxReservas(proxList)
+            setTopProductos(topList)
+            setProxVentas(proxList)
             setRecentLeads(recentLeadsData)
 
         } catch (err) {
@@ -287,7 +287,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="kpi-card-value">{formatCurrency(stats.ingresosMes)}</div>
                         <div className="kpi-card-sub">
-                            Costos Operador: <span style={{ color: 'var(--color-danger)' }}>{formatCurrency(stats.costosMes)}</span>
+                            Costos Asesor: <span style={{ color: 'var(--color-danger)' }}>{formatCurrency(stats.costosMes)}</span>
                         </div>
                     </div>
 
@@ -297,7 +297,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="kpi-card-value">{stats.winRate.toFixed(1)}%</div>
                         <div className="kpi-card-sub">
-                            {stats.reservasTotal} reservas de {stats.leadsTotal} leads totales
+                            {stats.ventasTotal} ventas de {stats.leadsTotal} leads totales
                         </div>
                     </div>
 
@@ -359,30 +359,30 @@ export default function DashboardPage() {
                 <div className="glass-card" style={{ ...animStyle(500), display: 'flex', flexDirection: 'column' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                         <h3 className="glass-card-title" style={{ margin: 0 }}>Operaciones a 7 Días</h3>
-                        <span className="badge badge-nuevo">{proxReservas.length} Tours</span>
+                        <span className="badge badge-nuevo">{proxVentas.length} Productos</span>
                     </div>
 
                     {loading ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {[0, 1, 2].map(i => <SkeletonCard key={i} height={52} />)}
                         </div>
-                    ) : proxReservas.length === 0 ? (
+                    ) : proxVentas.length === 0 ? (
                         <div className="empty-state" style={{ flex: 1, padding: '24px 0' }}>
-                            <div className="empty-state-text">No hay tours programados para esta semana.</div>
+                            <div className="empty-state-text">No hay productos programados para esta semana.</div>
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {proxReservas.map((pr, idx) => (
+                            {proxVentas.map((pr, idx) => (
                                 <div key={idx} style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.02)', display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 14, alignItems: 'center' }}>
                                     <div style={{ textAlign: 'center', background: 'var(--color-accent-soft)', padding: '6px 10px', borderRadius: 8, color: 'var(--color-accent)', minWidth: 60 }}>
                                         <div style={{ fontSize: '0.7rem', textTransform: 'capitalize', fontWeight: 600, marginBottom: -2 }}>{pr.fecha.split(',')[0]}</div>
                                         <div style={{ fontSize: '1rem', fontWeight: 700 }}>{pr.fecha.split(' ')[1]}</div>
                                     </div>
                                     <div style={{ overflow: 'hidden' }}>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pr.tour}</div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pr.producto}</div>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>👤 {pr.cliente}</div>
                                     </div>
-                                    <span className="badge" style={{ background: 'rgba(255,255,255,0.05)' }}>{pr.pax} pax</span>
+                                    <span className="badge" style={{ background: 'rgba(255,255,255,0.05)' }}>{pr.pax} und.</span>
                                 </div>
                             ))}
                         </div>
@@ -393,18 +393,18 @@ export default function DashboardPage() {
             {/* ─── BOTTOM: TOP TOURS & RECENT LEADS ─── */}
             <div className="dashboard-bottom" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px' }}>
                 <div className="glass-card" style={animStyle(600)}>
-                    <h3 className="glass-card-title">🏆 Top 3 Tours Estrella</h3>
+                    <h3 className="glass-card-title">🏆 Top 3 Productos Estrella</h3>
                     {loading ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             {[0, 1, 2].map(i => <SkeletonCard key={i} height={40} />)}
                         </div>
-                    ) : topTours.length === 0 ? (
+                    ) : topProductos.length === 0 ? (
                         <div className="empty-state" style={{ padding: '20px 0' }}>
                             <div className="empty-state-text">No hay data suficiente</div>
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            {topTours.map((t, idx) => (
+                            {topProductos.map((t, idx) => (
                                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                                     <div style={{ fontSize: '1.5rem', fontWeight: 800, color: idx === 0 ? '#fbbf24' : idx === 1 ? '#94a3b8' : '#cd7f32', opacity: 0.9 }}>
                                         #{idx + 1}
@@ -412,7 +412,7 @@ export default function DashboardPage() {
                                     <div style={{ flex: 1 }}>
                                         <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>{t.nombre}</div>
                                         <div className="progress-bar" style={{ marginTop: 6 }}>
-                                            <div className="progress-bar-fill" style={{ width: `${(t.ventas / topTours[0].ventas) * 100}%`, background: 'var(--color-info)' }} />
+                                            <div className="progress-bar-fill" style={{ width: `${(t.ventas / topProductos[0].ventas) * 100}%`, background: 'var(--color-info)' }} />
                                         </div>
                                     </div>
                                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-secondary)', minWidth: 40, textAlign: 'right' }}>

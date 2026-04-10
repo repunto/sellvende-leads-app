@@ -32,7 +32,7 @@ import MassEmailModal        from '../components/leads/modals/MassEmailModal'
 import LeadDetailPanel       from '../components/leads/modals/LeadDetailPanel'
 import IndividualEmailModal  from '../components/leads/modals/IndividualEmailModal'
 import ConfirmModal          from '../components/leads/modals/ConfirmModal'
-import WaTourSelectorModal   from '../components/leads/modals/WaTourSelectorModal'
+import WaProductoSelectorModal   from '../components/leads/modals/WaProductoSelectorModal'
 
 // ── Utilities ──────────────────────────────────────────
 import { getColdLevel, getLeadScore, formatTemporada } from '../lib/leadsUtils'
@@ -44,7 +44,7 @@ const KANBAN_COLS = [
     { estado: 'nuevo',      label: 'Nuevo',      color: '#3b82f6', icon: '✨' },
     { estado: 'contactado', label: 'Contactado',  color: '#eab308', icon: '📞' },
     { estado: 'cotizado',   label: 'Cotizado',    color: '#f97316', icon: '💰' },
-    { estado: 'reservado',  label: 'Reservado',   color: '#10b981', icon: '✅' },
+    { estado: 'ventado',  label: 'Ventado',   color: '#10b981', icon: '✅' },
 ]
 const badgeClass = (estado) => `badge badge-${estado}`
 
@@ -73,18 +73,18 @@ export default function LeadsPage() {
     const [waTemplates, setWaTemplates]       = useState([])
     const [emailTemplates, setEmailTemplates] = useState([])
     const [configs, setConfigs]               = useState({})
-    const [allTours, setAllTours]             = useState([])
+    const [allProductos, setAllProductos]             = useState([])
     const [secuencias, setSecuencias]         = useState([])
     const [globalForms, setGlobalForms]       = useState([])
 
-    // ── WhatsApp tour selector modal ────────────────────
+    // ── WhatsApp producto selector modal ────────────────────
     const [waModal, setWaModal] = useState(null)
 
     // ── Lead form ───────────────────────────────────────
     const [showForm, setShowForm]       = useState(false)
     const [editingLead, setEditingLead] = useState(null)
     const [formData, setFormData]       = useState({
-        nombre: '', email: '', telefono: '', tour_nombre: '',
+        nombre: '', email: '', telefono: '', producto_interes: '',
         origen: 'Orgánico / Manual', idioma: 'ES',
         personas: '', temporada: '', notas: '', estado: 'nuevo'
     })
@@ -235,16 +235,16 @@ export default function LeadsPage() {
         supabase.from('secuencias_marketing').select('*, pasos:pasos_secuencia(*)')
             .eq('agencia_id', agencia.id).eq('activa', true)
             .then(({ data }) => { if (data) setSecuencias(data) })
-        supabase.from('tours').select('id, nombre, precio_usd, duracion_dias')
+        supabase.from('productos').select('id, nombre, precio_usd, duracion_dias')
             .eq('agencia_id', agencia.id)
-            .then(({ data }) => { if (data) setAllTours(data) })
+            .then(({ data }) => { if (data) setAllProductos(data) })
             
         // Fetch all distinct forms from the entire database, not just paginated
-        supabase.from('leads').select('form_name, tour_nombre').eq('agencia_id', agencia.id).limit(5000)
+        supabase.from('leads').select('form_name, producto_interes').eq('agencia_id', agencia.id).limit(5000)
             .then(({ data }) => {
                 if (data) {
                     const uniqueForms = new Set(data.map(l => {
-                        let f = l.form_name || l.tour_nombre || '';
+                        let f = l.form_name || l.producto_interes || '';
                         if (f.includes(' - ')) f = f.split(' - ')[0].trim();
                         return f;
                     }).filter(Boolean));
@@ -302,7 +302,7 @@ export default function LeadsPage() {
             setEditingLead(lead)
             setFormData({
                 nombre: lead.nombre || '', email: lead.email || '',
-                telefono: lead.telefono || '', tour_nombre: lead.tour_nombre || '',
+                telefono: lead.telefono || '', producto_interes: lead.producto_interes || '',
                 origen: lead.origen || 'Orgánico / Manual', idioma: lead.idioma || 'ES',
                 personas: lead.personas || '', temporada: lead.temporada || '',
                 notas: lead.notas || '', estado: lead.estado || 'nuevo',
@@ -310,7 +310,7 @@ export default function LeadsPage() {
         } else {
             setEditingLead(null)
             setFormData({
-                nombre: '', email: '', telefono: '', tour_nombre: '',
+                nombre: '', email: '', telefono: '', producto_interes: '',
                 origen: 'Orgánico / Manual', idioma: 'ES',
                 personas: '', temporada: '', notas: '', estado: 'nuevo'
             })
@@ -455,15 +455,15 @@ export default function LeadsPage() {
         let tipoBuscado = 'lead_primer_contacto'
         if (lead.estado === 'contactado') tipoBuscado = 'lead_seguimiento'
         if (lead.estado === 'cotizado')   tipoBuscado = 'cotizacion'
-        if (lead.estado === 'reservado')  tipoBuscado = 'confirmacion'
+        if (lead.estado === 'ventado')  tipoBuscado = 'confirmacion'
         const idiomaLead = lead.idioma === 'EN' ? 'EN' : 'ES'
 
         let template = waTemplates.find(t =>
             t.tipo === tipoBuscado && t.idioma === idiomaLead &&
             t.origen && lead.form_name && t.origen.toLowerCase() === lead.form_name.toLowerCase()
         )
-        if (!template && lead.tour_nombre) {
-            const keyword = lead.tour_nombre.toLowerCase().trim()
+        if (!template && lead.producto_interes) {
+            const keyword = lead.producto_interes.toLowerCase().trim()
             template = waTemplates.find(t =>
                 t.tipo === tipoBuscado && t.idioma === idiomaLead &&
                 t.nombre?.toLowerCase().includes(keyword)
@@ -476,8 +476,8 @@ export default function LeadsPage() {
         let baseMsg = template?.contenido || ''
         if (!template) {
             baseMsg = idiomaLead === 'EN'
-                ? `Hello {nombre}, thank you for your interest in {tour}. How can I help you?`
-                : `Hola {nombre}, gracias por tu interés en {tour}. ¿Cómo te puedo ayudar?`
+                ? `Hello {nombre}, thank you for your interest in {producto}. How can I help you?`
+                : `Hola {nombre}, gracias por tu interés en {producto}. ¿Cómo te puedo ayudar?`
         }
         return { template, baseMsg }
     }, [waTemplates])
@@ -486,38 +486,38 @@ export default function LeadsPage() {
         const { template, baseMsg } = getWaTemplateAndMsg(lead)
         if (!baseMsg) return
         if (baseMsg.includes('{precio}')) {
-            const searchKeyword = (template?.nombre || lead.tour_nombre || '').toLowerCase()
-            let matches = allTours.filter(t => t.nombre.toLowerCase().includes(searchKeyword))
-            if (matches.length === 0 && lead.tour_nombre)
-                matches = allTours.filter(t => t.nombre.toLowerCase().includes(lead.tour_nombre.toLowerCase()))
-            if (matches.length === 0) matches = allTours
-            setWaModal({ lead, template, baseMsg, matchingTours: matches })
+            const searchKeyword = (template?.nombre || lead.producto_interes || '').toLowerCase()
+            let matches = allProductos.filter(t => t.nombre.toLowerCase().includes(searchKeyword))
+            if (matches.length === 0 && lead.producto_interes)
+                matches = allProductos.filter(t => t.nombre.toLowerCase().includes(lead.producto_interes.toLowerCase()))
+            if (matches.length === 0) matches = allProductos
+            setWaModal({ lead, template, baseMsg, matchingProductos: matches })
             return
         }
         finishWaClick(lead, baseMsg, null)
-    }, [getWaTemplateAndMsg, allTours])
+    }, [getWaTemplateAndMsg, allProductos])
 
-    const finishWaClick = useCallback((lead, baseMsg, selectedTour) => {
+    const finishWaClick = useCallback((lead, baseMsg, selectedProducto) => {
         const isEN = lead.idioma === 'EN'
         const socialProofWA = isEN
-            ? '⭐ Over 1,500 happy travelers trust us. See their real stories on TripAdvisor: https://bit.ly/your-tripadvisor'
-            : '⭐ Más de 1,500 viajeros felices confían en nosotros. Mira sus historias reales en TripAdvisor: https://bit.ly/tu-tripadvisor'
+            ? '⭐ Over 1,500 happy customers trust us. See their real stories on our reviews page.'
+            : '⭐ Más de 1,500 clientes felices confían en nosotros. Mira sus historias reales en nuestra página de reseñas.'
 
         let msg = baseMsg
             .replace(/{nombre}/gi, lead.nombre || '')
-            .replace(/{tour}/gi, selectedTour?.nombre || lead.tour_nombre || 'nuestros tours')
+            .replace(/{producto}/gi, selectedProducto?.nombre || lead.producto_interes || 'nuestros productos')
             .replace(/{personas}/gi, lead.personas || '')
             .replace(/{temporada}/gi, formatTemporada(lead.temporada))
             .replace(/{fecha}/gi, formatTemporada(lead.temporada))
-            .replace(/{FechaViaje}/gi, formatTemporada(lead.temporada))
+            .replace(/{fechaviaje}/gi, formatTemporada(lead.temporada))
             .replace(/{pax}/gi, lead.personas || '')
             .replace(/{telefono}/gi, configs.whatsapp || configs.telefono_agencia || '')
             .replace(/{email}/gi, configs.email_contacto || '')
             .replace(/{agencia}/gi, configs.nombre_visible || agencia?.nombre || 'nuestra agencia')
             .replace(/{social_proof}/gi, socialProofWA)
 
-        msg = selectedTour
-            ? msg.replace(/{precio}/gi, `$${selectedTour.precio_usd}`)
+        msg = selectedProducto
+            ? msg.replace(/{precio}/gi, `$${selectedProducto.precio_usd}`)
             : msg.replace(/{precio}/gi, '')
 
         let tel = (lead.telefono || '').replace(/[^0-9]/g, '')
@@ -742,7 +742,7 @@ export default function LeadsPage() {
                     startDripSequenceFromModal={startDripSequenceFromModal}
                 />
 
-                <WaTourSelectorModal
+                <WaProductoSelectorModal
                     waModal={waModal}
                     setWaModal={setWaModal}
                     finishWaClick={finishWaClick}

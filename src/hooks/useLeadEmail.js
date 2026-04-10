@@ -10,8 +10,8 @@ import { formatTemporada, mesAgotado } from '../lib/leadsUtils'
 
 // Static social proof snippets (non-sensitive, can live in frontend)
 const SOCIAL_PROOF_EMAIL = {
-    EN: '<div style="background:#f8f9fa; padding:15px; border-radius:8px; margin:20px 0; border-left:4px solid #1a73e8;"><p style="margin:0; font-size:14px; color:#555;">⭐ <b>Over 1,500 happy travelers trust us.</b><br>Read their real stories on <a href="https://bit.ly/your-tripadvisor" style="color:#1a73e8; font-weight:bold; text-decoration:none;">TripAdvisor &rarr;</a></p></div>',
-    ES: '<div style="background:#f8f9fa; padding:15px; border-radius:8px; margin:20px 0; border-left:4px solid #1a73e8;"><p style="margin:0; font-size:14px; color:#555;">⭐ <b>Más de 1,500 viajeros felices confían en nosotros.</b><br>Mira sus historias reales en <a href="https://bit.ly/tu-tripadvisor" style="color:#1a73e8; font-weight:bold; text-decoration:none;">TripAdvisor &rarr;</a></p></div>',
+    EN: '<div style="background:#f8f9fa; padding:15px; border-radius:8px; margin:20px 0; border-left:4px solid #1a73e8;"><p style="margin:0; font-size:14px; color:#555;">⭐ <b>Over 1,500 happy customers trust us.</b><br>Read their real stories on <a href="{url_resenas}" style="color:#1a73e8; font-weight:bold; text-decoration:none;">our reviews page &rarr;</a></p></div>',
+    ES: '<div style="background:#f8f9fa; padding:15px; border-radius:8px; margin:20px 0; border-left:4px solid #1a73e8;"><p style="margin:0; font-size:14px; color:#555;">⭐ <b>Más de 1,500 clientes felices confían en nosotros.</b><br>Mira sus historias reales en <a href="{url_resenas}" style="color:#1a73e8; font-weight:bold; text-decoration:none;">nuestra página de reseñas &rarr;</a></p></div>',
 }
 
 /** Build personalized body and subject from raw template + lead context */
@@ -19,11 +19,11 @@ function buildEmailContent({ rawHtml, rawSubject, lead, config, agencyName, send
     const isEN = (lead.idioma || '').toUpperCase() === 'EN'
     const socialProof = isEN ? SOCIAL_PROOF_EMAIL.EN : SOCIAL_PROOF_EMAIL.ES
     const fromEmail = config['email_remitente'] || ''
-    const activeTourName = tplOrigen || lead.tour_nombre || lead.form_name || 'tu vacación'
+    const activeProductoName = tplOrigen || lead.producto_interes || lead.form_name || 'nuestro producto'
 
     const body = rawHtml
         .replace(/{nombre}/gi, lead.nombre || '')
-        .replace(/{tour}/gi, activeTourName)
+        .replace(/{producto}/gi, activeProductoName)
         .replace(/{email}/gi, fromEmail)
         .replace(/{telefono}/gi, config['telefono_agencia'] || config['whatsapp'] || '')
         .replace(/{agencia}/gi, agencyName)
@@ -35,7 +35,7 @@ function buildEmailContent({ rawHtml, rawSubject, lead, config, agencyName, send
 
     const subject = rawSubject
         .replace(/{nombre}/gi, lead.nombre || '')
-        .replace(/{tour}/gi, activeTourName)
+        .replace(/{producto}/gi, activeProductoName)
         .replace(/{fechaviaje}/gi, formatTemporada(lead.temporada))
         .replace(/{fecha}/gi, formatTemporada(lead.temporada))
         .replace(/{mesagotado}/gi, mesAgotado)
@@ -88,13 +88,13 @@ export function useLeadEmail({
         let tipoBuscado = 'Agradecimiento / Bienvenida'
         if (lead.estado === 'contactado') tipoBuscado = 'Seguimiento'
         if (lead.estado === 'cotizado') tipoBuscado = 'Cotización'
-        if (lead.estado === 'reservado') tipoBuscado = 'Itinerario / Voucher'
+        if (lead.estado === 'ventado') tipoBuscado = 'Itinerario / Voucher'
         const idiomaLead = lead.idioma === 'EN' ? 'EN' : 'ES'
         let template = null
-        if (lead.tour_nombre) {
+        if (lead.producto_interes) {
             template = emailTemplates.find(t =>
                 t.tipo === tipoBuscado && t.idioma === idiomaLead &&
-                t.nombre?.toLowerCase().includes(lead.tour_nombre.toLowerCase())
+                t.nombre?.toLowerCase().includes(lead.producto_interes.toLowerCase())
             )
         }
         if (!template) template = emailTemplates.find(t => t.tipo === tipoBuscado && t.idioma === idiomaLead)

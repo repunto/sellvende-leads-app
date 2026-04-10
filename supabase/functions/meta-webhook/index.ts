@@ -216,12 +216,12 @@ async function processNewLead(pageId: string, formId: string, leadgenId: string)
     const origen = plataforma === 'instagram' ? 'Instagram Ads' : 'Facebook Ads'
 
     // Get form name
-    let tourNombre = 'Meta Lead'
+    let productoNombre = 'Meta Lead'
     const formUrl = `https://graph.facebook.com/v19.0/${formId}?fields=name&access_token=${accessToken}`
     const formRes = await fetch(formUrl)
     const formData = await formRes.json()
     if (!formData.error && formData.name) {
-        tourNombre = formData.name.split('-')[0].trim()
+        productoNombre = formData.name.split('-')[0].trim()
     }
 
     // 6. Upsert into Supabase 'leads' — idempotent by meta_lead_id
@@ -230,8 +230,8 @@ async function processNewLead(pageId: string, formId: string, leadgenId: string)
         nombre,
         email: email || '',
         telefono,
-        tour_nombre: tourNombre,
-        form_name: tourNombre,
+        producto_interes: productoNombre,
+        form_name: productoNombre,
         origen,
         plataforma,
         meta_lead_id: leadgenId,
@@ -257,31 +257,31 @@ async function processNewLead(pageId: string, formId: string, leadgenId: string)
 
         // 7. Auto-assign to smart tour sequence or default active sequence
         try {
-            console.log(`[Automation] Searching sequence for tour match: "${tourNombre}"`)
+            console.log(`[Automation] Searching sequence for product match: "${productoNombre}"`)
             
-            // 7.1 Try to match specifically by tour_match keyword
+            // 7.1 Try to match specifically by producto_match keyword
             const { data: matchedSecs } = await supabase
                 .from('secuencias_marketing')
                 .select('id, nombre')
                 .eq('agencia_id', agenciaId)
                 .eq('activa', true)
-                .ilike('tour_match', `%${tourNombre}%`)
+                .ilike('producto_match', `%${productoNombre}%`)
                 .limit(1)
 
             let targetSecId = matchedSecs?.[0]?.id
 
             if (targetSecId) {
-                console.log(`[Automation] Smart match found: "${matchedSecs[0].nombre}" for tour "${tourNombre}"`)
+                console.log(`[Automation] Smart match found: "${matchedSecs[0].nombre}" for product "${productoNombre}"`)
             } else {
-                console.log(`[Automation] No smart match for tour "${tourNombre}". Trying to find a General sequence fallback...`)
+                console.log(`[Automation] No smart match for product "${productoNombre}". Trying to find a General sequence fallback...`)
                 
-                // 7.2 FALLBACK: Find a general sequence (tour_match is null or empty)
+                // 7.2 FALLBACK: Find a general sequence (producto_match is null or empty)
                 const { data: generalSecs } = await supabase
                     .from('secuencias_marketing')
                     .select('id, nombre')
                     .eq('agencia_id', agenciaId)
                     .eq('activa', true)
-                    .or('tour_match.is.null,tour_match.eq.,tour_match.ilike.general')
+                    .or('producto_match.is.null,producto_match.eq.,producto_match.ilike.general')
                     .limit(1)
                 
                 if (generalSecs && generalSecs.length > 0) {

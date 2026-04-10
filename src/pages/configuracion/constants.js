@@ -15,17 +15,17 @@ export const TIPOS_LABELS = {
     lead_seguimiento: '2. Seguimiento (Lead Frío)',
     lead_reenganche: '3. Re-enganche (Promo Lead)',
     cotizacion: '1. Cotización',
-    confirmacion: '2. Confirmación de Reserva',
-    recordatorio: '3. Recordatorio Pre-Tour',
+    confirmacion: '2. Confirmación de Venta',
+    recordatorio: '3. Recordatorio Pre-Producto',
     resena: '4. Solicitud de Reseña',
 }
 
 export const SHORTCODES_HELP = [
     { code: '{nombre}', desc: 'Nombre del cliente' },
-    { code: '{tour}', desc: 'Tour contratado' },
-    { code: '{fecha}', desc: 'Fecha del tour' },
-    { code: '{FechaViaje}', desc: 'Fecha exacta o Mes de Viaje' },
-    { code: '{pax}', desc: 'Número de pasajeros' },
+    { code: '{producto}', desc: 'Producto contratado' },
+    { code: '{fecha}', desc: 'Fecha del servicio' },
+    { code: '{fechaviaje}', desc: 'Fecha / mes programado (alias de {fecha})' },
+    { code: '{pax}', desc: 'Número de unidades' },
     { code: '{precio}', desc: 'Precio total de venta' },
     { code: '{adelanto}', desc: 'Monto del adelanto' },
     { code: '{saldo}', desc: 'Saldo pendiente' },
@@ -33,18 +33,18 @@ export const SHORTCODES_HELP = [
     { code: '{remitente}', desc: 'Firma gerente / dueño' },
     { code: '{email}', desc: 'Email de tu Agencia' },
     { code: '{telefono}', desc: 'WhatsApp de tu Agencia' },
-    { code: '{opcionales}', desc: 'Opcionales contratados' },
+    { code: '{extras}', desc: 'extras contratados' },
     { code: '{social_proof}', desc: 'Testimonios / Reviews' },
 ]
 
 // Keys rendered as normal form fields (email keys handled separately by custom UI)
 export const CONFIG_KEYS = [
-    { clave: 'nombre_visible', label: 'Nombre Visible de la Agencia', placeholder: 'Ej. SamiMunay Tours', type: 'text' },
+    { clave: 'nombre_visible', label: 'Nombre Visible del Negocio', placeholder: 'Ej. Mi Empresa SAS', type: 'text' },
     { clave: 'logo_url', label: 'URL del Logo (1:1 o horizontal)', placeholder: 'https://...', type: 'url' },
     { clave: 'color_marca', label: 'Color de Marca (Naranja/Azul/Verde)', placeholder: '#1a73e8', type: 'color' }, // Added brand color
     { clave: 'whatsapp', label: 'WhatsApp Principal', placeholder: '+51987654321', type: 'text' },
-    { clave: 'email_contacto', label: 'Email de Contacto', placeholder: 'reservas@tuagencia.com', type: 'email' },
-    { clave: 'email_preheader', label: 'Texto Preview en Bandeja (Inbox)', placeholder: 'Ej. Tu aventura en Cusco te espera...', type: 'text' }, // Added preheader
+    { clave: 'email_contacto', label: 'Email de Contacto', placeholder: 'ventas@tuagencia.com', type: 'email' },
+    { clave: 'email_preheader', label: 'Texto Preview en Bandeja (Inbox)', placeholder: 'Ej. Información importante para ti', type: 'text' }, // Added preheader
     { clave: 'nombre_remitente', label: 'Nombre del Remitente (Firma)', placeholder: 'Ej. Carlos de SamiMunay', type: 'text' },
     { clave: 'moneda', label: 'Moneda por Defecto', placeholder: 'USD', type: 'text' },
     { clave: 'mensaje_whatsapp', label: 'Mensaje WhatsApp por Defecto', placeholder: 'Hola {nombre}, gracias por...', type: 'textarea' },

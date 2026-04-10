@@ -69,11 +69,11 @@ export function useMarketingData() {
         if (!agencia) return
         const { data } = await supabase
             .from('leads')
-            .select('form_name, tour_nombre')
-            .or('form_name.not.is.null,tour_nombre.not.is.null')
+            .select('form_name, producto_interes')
+            .or('form_name.not.is.null,producto_interes.not.is.null')
         if (data?.length > 0) {
             const unique = [...new Set(
-                data.flatMap(d => [d.form_name, d.tour_nombre]).filter(Boolean)
+                data.flatMap(d => [d.form_name, d.producto_interes]).filter(Boolean)
             )].sort()
             setMetaForms(unique)
         }
@@ -118,7 +118,7 @@ export function useMarketingData() {
             supabase.from('leads')
                 .select('id, origen, created_at')
                 .eq('agencia_id', agencia.id),
-            supabase.from('reservas')
+            supabase.from('ventas')
                 .select('id, lead_id, precio_venta, estado')
                 .eq('agencia_id', agencia.id)
                 .in('estado', ['confirmada', 'completada', 'pagada'])
@@ -173,7 +173,7 @@ export function useMarketingData() {
         const payload = {
             ...secuenciaForm,
             agencia_id: agencia.id,
-            nombre: secuenciaForm.tour_match || 'Secuencia'
+            nombre: secuenciaForm.producto_match || 'Secuencia'
         }
         let secId = null
 

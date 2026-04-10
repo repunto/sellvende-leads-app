@@ -19,7 +19,7 @@ const configItems = [
     { path: '/descuentos', icon: <Tag size={20} strokeWidth={2.5} />, label: 'Descuentos' },
     { path: '/finanzas', icon: <DollarSign size={20} strokeWidth={2.5} />, label: 'Finanzas & ROAS' },
     { path: '/marketing', icon: <BarChart2 size={20} strokeWidth={2.5} />, label: 'Automatización Email' },
-    { path: '/operadores', icon: <UsersIcon size={20} strokeWidth={2.5} />, label: 'Equipo Comercial' },
+    { path: '/asesores', icon: <UsersIcon size={20} strokeWidth={2.5} />, label: 'Equipo Comercial' },
     { path: '/configuracion', icon: <Settings size={20} strokeWidth={2.5} />, label: 'Configuración' },
 ]
 
@@ -45,8 +45,8 @@ export default function Layout({ children }) {
             {/* Mobile Header */}
             <header className="mobile-header">
                 <div className="sidebar-brand" style={{ padding: 0, border: 'none' }}>
-                    <div className="sidebar-brand-icon" style={{ background: 'var(--color-accent)' }}>S</div>
-                    <div className="sidebar-brand-text">Sellvende</div>
+                    <div className="sidebar-brand-icon" style={{ background: 'linear-gradient(135deg, var(--color-accent) 0%, #c2410c 100%)' }}>S</div>
+                    <div className="sidebar-brand-text">Sellvende <span style={{ color: 'var(--color-accent)' }}>Leads</span></div>
                 </div>
                 <button className="hamburger" onClick={toggleSidebar}>
                     {isSidebarOpen ? '✕' : '☰'}

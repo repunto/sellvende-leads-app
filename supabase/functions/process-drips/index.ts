@@ -6,8 +6,7 @@ import nodemailer from "npm:nodemailer";
 const ALLOWED_ORIGINS = [
     'http://localhost:3002',
     'http://localhost:5173',
-    'https://quipureservas.com',
-    'https://www.quipureservas.com',
+    'https://leads.sellvende.com',
 ]
 
 function getCorsHeaders(req: Request) {
@@ -283,7 +282,7 @@ serve(async (req: Request) => {
             .from('leads_secuencias')
             .select(`
                 *,
-                lead:leads!inner(id, nombre, email, telefono, tour_nombre, form_name, temporada, agencia_id, estado, ultimo_contacto, idioma, unsubscribed, email_rebotado),
+                lead:leads!inner(id, nombre, email, telefono, producto_interes, form_name, temporada, agencia_id, estado, ultimo_contacto, idioma, unsubscribed, email_rebotado),
                 secuencia:secuencias_marketing!inner(
                     id, activa, nombre, agencia_id,
                     pasos:pasos_secuencia(dia_envio, plantilla_email_id, tipo_mensaje, whatsapp_template_name)
@@ -511,17 +510,18 @@ async function processLead(ls: any, counter: { enviados: number }, failedEmails:
         return;
     }
 
-    const leadNombre = ls.lead.nombre || 'Viajero';
-    const activeTourName = tpl.origen || ls.lead.tour_nombre || ls.lead.form_name || 'tu tour';
+    const leadNombre = ls.lead.nombre || 'Cliente';
+    const activeTourName = tpl.origen || ls.lead.producto_interes || ls.lead.form_name || 'nuestro servicio';
     const socialProof = tpl.idioma === 'EN'
-        ? '<div style="background:#f4f4f5;padding:12px;border-left:4px solid #facc15;font-style:italic">"An unforgettable experience, totally recommended!" - TripAdvisor</div>'
-        : '<div style="background:#f4f4f5;padding:12px;border-left:4px solid #facc15;font-style:italic">"Una experiencia inolvidable, 100% recomendado" - TripAdvisor</div>';
+        ? '<div style="background:#f4f4f5;padding:12px;border-left:4px solid #facc15;font-style:italic">"An unforgettable experience, totally recommended!" - Verified Customer</div>'
+        : '<div style="background:#f4f4f5;padding:12px;border-left:4px solid #facc15;font-style:italic">"Una experiencia inolvidable, 100% recomendado" - Cliente Verificado</div>';
 
     const mesesArray = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const mesAgotado = mesesArray[(new Date().getMonth() + 2) % 12];
 
     const replaceVars = (s: string) => s
         .replace(/{nombre}/gi, leadNombre)
+        .replace(/{producto}/gi, activeTourName)
         .replace(/{tour}/gi, activeTourName)
         .replace(/{agencia}/gi, config['nombre_visible'] || 'Agencia')
         .replace(/{remitente}/gi, remitenteNombre)

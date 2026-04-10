@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-const ESTADOS = ['nuevo', 'contactado', 'cotizado', 'reservado']
+const ESTADOS = ['nuevo', 'contactado', 'cotizado', 'ventado']
 
 const LeadsToolbar = React.memo(({
     search, setSearch, 
@@ -15,7 +15,7 @@ const LeadsToolbar = React.memo(({
 
     const formsList = globalForms && globalForms.length > 0 ? globalForms : useMemo(() => {
         const uniqueForms = new Set(leads.map(l => {
-            let f = l.form_name || l.tour_nombre || '';
+            let f = l.form_name || l.producto_interes || '';
             if (f.includes(' - ')) f = f.split(' - ')[0].trim();
             return f;
         }).filter(Boolean));
@@ -30,7 +30,7 @@ const LeadsToolbar = React.memo(({
                         <input
                             type="text"
                             className="toolbar-search"
-                            placeholder="Buscar por nombre, email, tour..."
+                            placeholder="Buscar por nombre, email, producto..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             style={{ paddingRight: 28 }}

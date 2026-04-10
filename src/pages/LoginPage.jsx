@@ -164,7 +164,7 @@ export default function LoginPage() {
                         color: 'white',
                         marginBottom: 16,
                         boxShadow: '0 8px 24px rgba(99,102,241,0.3)'
-                    }}>Q</div>
+                    }}>S</div>
                     <h1 style={{
                         fontSize: '28px', fontWeight: 800,
                         color: 'white', margin: '0 0 6px 0',

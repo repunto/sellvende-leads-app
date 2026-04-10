@@ -8,7 +8,7 @@ const WA_CONFIG_KEYS = ['whatsapp_api_enabled', 'whatsapp_phone_id', 'whatsapp_a
 
 export default function PlantillasWhatsAppTab({ showToast, agencia }) {
     const [plantillas, setPlantillas] = useState([])
-    const [tours, setTours] = useState([])
+    const [productos, setProductos] = useState([])
     const [loading, setLoading] = useState(true)
     const [showForm, setShowForm] = useState(false)
     const [editingPlantilla, setEditingPlantilla] = useState(null)
@@ -25,7 +25,7 @@ export default function PlantillasWhatsAppTab({ showToast, agencia }) {
     const [waSaving, setWaSaving] = useState(false)
 
     const [formData, setFormData] = useState({
-        nombre: '', tipo: TIPOS_PLANTILLA[0], tour_id: '', origen: '',
+        nombre: '', tipo: TIPOS_PLANTILLA[0], producto_id: '', origen: '',
         contenido: '', idioma: 'ES',
     })
 
@@ -46,10 +46,10 @@ export default function PlantillasWhatsAppTab({ showToast, agencia }) {
 
     async function loadData() {
         setLoading(true)
-        const [plantillasRes, toursRes, leadsRes, configRes] = await Promise.all([
+        const [plantillasRes, productosRes, leadsRes, configRes] = await Promise.all([
             supabase.from('plantillas_whatsapp').select('*').eq('agencia_id', agencia.id).order('tipo'),
-            supabase.from('tours').select('id, nombre').eq('agencia_id', agencia.id).eq('activo', true).order('nombre'),
-            supabase.from('leads').select('form_name, tour_nombre').eq('agencia_id', agencia.id),
+            supabase.from('productos').select('id, nombre').eq('agencia_id', agencia.id).eq('activo', true).order('nombre'),
+            supabase.from('leads').select('form_name, producto_interes').eq('agencia_id', agencia.id),
             supabase.from('configuracion').select('clave, valor').eq('agencia_id', agencia.id).in('clave', WA_CONFIG_KEYS)
         ])
         if (!plantillasRes.error) {
@@ -57,7 +57,7 @@ export default function PlantillasWhatsAppTab({ showToast, agencia }) {
             arr.sort((a,b) => TIPOS_PLANTILLA.indexOf(a.tipo) - TIPOS_PLANTILLA.indexOf(b.tipo))
             setPlantillas(arr)
         }
-        if (!toursRes.error) setTours(toursRes.data || [])
+        if (!productosRes.error) setProductos(productosRes.data || [])
         if (!leadsRes.error && leadsRes.data) {
             const stripDate = (name) => name
                 .replace(/\s*[-–]\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/i, '')
@@ -122,14 +122,14 @@ export default function PlantillasWhatsAppTab({ showToast, agencia }) {
             setFormData({
                 nombre: plantilla.nombre || '',
                 tipo: plantilla.tipo || TIPOS_PLANTILLA[0],
-                tour_id: plantilla.tour_id || '',
+                producto_id: plantilla.producto_id || '',
                 origen: plantilla.origen || '',
                 contenido: plantilla.contenido || '',
                 idioma: plantilla.idioma || 'ES',
             })
         } else {
             setEditingPlantilla(null)
-            setFormData({ nombre: '', tipo: TIPOS_PLANTILLA[0], tour_id: '', origen: '', contenido: '', idioma: 'ES' })
+            setFormData({ nombre: '', tipo: TIPOS_PLANTILLA[0], producto_id: '', origen: '', contenido: '', idioma: 'ES' })
         }
         setShowForm(true)
     }
@@ -139,11 +139,11 @@ export default function PlantillasWhatsAppTab({ showToast, agencia }) {
         try {
             const payload = { ...formData, agencia_id: agencia.id }
             if (TIPOS_MARKETING.includes(payload.tipo)) {
-                payload.tour_id = null;
+                payload.producto_id = null;
                 if (payload.origen === '') payload.origen = null;
             } else {
                 payload.origen = null;
-                if (payload.tour_id === '') payload.tour_id = null;
+                if (payload.producto_id === '') payload.producto_id = null;
             }
             if (editingPlantilla) {
                 const { error } = await supabase.from('plantillas_whatsapp').update(payload).eq('id', editingPlantilla.id)
@@ -181,8 +181,8 @@ export default function PlantillasWhatsAppTab({ showToast, agencia }) {
         if (TIPOS_MARKETING.includes(p.tipo)) {
             return p.origen ? p.origen : 'General (Cualquier formulario)'
         }
-        const tour = tours.find(t => t.id === p.tour_id)
-        return tour ? tour.nombre : 'General (Todos los formularios)'
+        const producto = productos.find(t => t.id === p.producto_id)
+        return producto ? producto.nombre : 'General (Todos los formularios)'
     }
 
     function getTipoBadge(tipo) {
@@ -384,7 +384,7 @@ export default function PlantillasWhatsAppTab({ showToast, agencia }) {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 0.6fr', gap: 12 }}>
                                 <div className="form-group" style={{ margin: 0 }}>
                                     <label className="form-label">Tipo *</label>
-                                    <select className="form-select" value={formData.tipo} onChange={e => setFormData({ ...formData, tipo: e.target.value, origen: '', tour_id: '' })}>
+                                    <select className="form-select" value={formData.tipo} onChange={e => setFormData({ ...formData, tipo: e.target.value, origen: '', producto_id: '' })}>
                                         <optgroup label="Marketing">
                                             {TIPOS_MARKETING.map(t => <option key={t} value={t}>{TIPOS_LABELS[t]}</option>)}
                                         </optgroup>
@@ -404,10 +404,10 @@ export default function PlantillasWhatsAppTab({ showToast, agencia }) {
                                         </>
                                     ) : (
                                         <>
-                                            <label className="form-label">Tour / Formulario</label>
-                                            <select className="form-select" value={formData.tour_id} onChange={e => setFormData({ ...formData, tour_id: e.target.value })}>
+                                            <label className="form-label">Producto / Formulario</label>
+                                            <select className="form-select" value={formData.producto_id} onChange={e => setFormData({ ...formData, producto_id: e.target.value })}>
                                                 <option value="">General</option>
-                                                {tours.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                                                {productos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                                             </select>
                                         </>
                                     )}

@@ -1,5 +1,5 @@
 /**
- * CommHubModal — Communication Hub for Reservas.
+ * CommHubModal — Communication Hub for Ventas.
  * Allows sending WhatsApp or Email to client/operator with personalized templates.
  */
 import React from 'react'
@@ -20,8 +20,8 @@ const TIPOS = [
 function CommHubModal({
     commModal,
     setCommModal,
-    operadores,
-    tours,
+    asesores,
+    productos,
     commSelectedTipo,
     handleCommTipoChange,
     commLoading,
@@ -32,22 +32,22 @@ function CommHubModal({
     handleSendEmail,
 }) {
     if (!commModal) return null
-    const { reserva, destinatario } = commModal
+    const { venta, destinatario } = commModal
 
-    const destinatarioLabel = destinatario === 'cliente' ? 'Cliente' : 'Operador'
+    const destinatarioLabel = destinatario === 'cliente' ? 'Cliente' : 'Asesor'
     const destinatarioNombre = destinatario === 'cliente'
-        ? reserva.cliente_nombre
-        : (operadores.find(o => o.id === reserva.operador_id)?.nombre || 'Sin asignar')
+        ? venta.cliente_nombre
+        : (asesores.find(o => o.id === venta.asesor_id)?.nombre || 'Sin asignar')
 
-    const toursNombre = reserva.reserva_tours
-        ?.map(rt => tours.find(t => t.id === rt.tour_id)?.nombre)
-        .filter(Boolean).join(' + ') || 'Sin tours'
+    const productosNombre = venta.venta_productos
+        ?.map(rt => productos.find(t => t.id === rt.producto_id)?.nombre)
+        .filter(Boolean).join(' + ') || 'Sin productos'
 
-    const fechaDisplay = reserva.reserva_tours?.length > 0 && reserva.reserva_tours[0].fecha_tour
-        ? new Date(reserva.reserva_tours[0].fecha_tour).toLocaleDateString('es-PE')
+    const fechaDisplay = venta.venta_productos?.length > 0 && venta.venta_productos[0].fecha_servicio
+        ? new Date(venta.venta_productos[0].fecha_servicio).toLocaleDateString('es-PE')
         : '—'
 
-    const saldo = (parseFloat(reserva.precio_venta || 0) - parseFloat(reserva.adelanto || 0)).toFixed(2)
+    const saldo = (parseFloat(venta.precio_venta || 0) - parseFloat(venta.adelanto || 0)).toFixed(2)
 
     return (
         <div className="modal-overlay" onClick={() => setCommModal(null)}>
@@ -61,14 +61,14 @@ function CommHubModal({
                     <button className="btn-close" onClick={() => setCommModal(null)}>✕</button>
                 </div>
 
-                {/* ── Reservation Summary Bar ── */}
+                {/* ── Ventation Summary Bar ── */}
                 <div style={{
                     display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
                     padding: 12, background: 'rgba(99,102,241,0.08)', borderRadius: 8,
                     border: '1px solid rgba(99,102,241,0.2)', marginBottom: 16, fontSize: '0.82rem'
                 }}>
                     <div><strong>👤 {destinatarioLabel}:</strong> {destinatarioNombre}</div>
-                    <div><strong>🏔️ Tour:</strong> {toursNombre}</div>
+                    <div><strong>🏔️ Producto:</strong> {productosNombre}</div>
                     <div><strong>📅 Fecha:</strong> {fechaDisplay}</div>
                     <div><strong>💰 Saldo:</strong> ${saldo}</div>
                 </div>

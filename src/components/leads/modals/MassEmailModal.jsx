@@ -21,8 +21,8 @@ export default function MassEmailModal({
     const previewHtml = (emailBody || '')
         .replace(/\{Nombre\}/gi, '[Nombre del Cliente]')
         .replace(/\{nombre\}/gi, '[Nombre del Cliente]')
-        .replace(/\{Tour\}/gi, '[Tour de Interés]')
-        .replace(/\{tour\}/gi, '[Tour de Interés]')
+        .replace(/\{Producto\}/gi, '[Producto de Interés]')
+        .replace(/\{producto\}/gi, '[Producto de Interés]')
         .replace(/\{Agencia\}/gi, agencia?.nombre || 'Nuestra Agencia')
         .replace(/\{agencia\}/gi, agencia?.nombre || 'Nuestra Agencia')
         .replace(/\{FechaViaje\}/gi, '[Fecha de Viaje]')
@@ -118,7 +118,7 @@ export default function MassEmailModal({
                                         textAlign: 'center', fontSize: '12px', color: '#64748b',
                                         borderTop: '1px solid #f1f5f9'
                                     }}>
-                                        Enviado por <strong>{agencia?.nombre || 'Agencia Tours'}</strong>
+                                        Enviado por <strong>{agencia?.nombre || 'Agencia Productos'}</strong>
                                     </div>
                                 </div>
                                 <p style={{ textAlign: 'center', fontSize: '11px', color: '#94a3b8', marginTop: 8 }}>

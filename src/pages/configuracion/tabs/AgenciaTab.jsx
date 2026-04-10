@@ -478,7 +478,7 @@ export default function AgenciaTab({ showToast, agencia }) {
                             <input
                                 className="form-input"
                                 type="email"
-                                placeholder={config.proveedor_email === 'gmail' ? 'tu@gmail.com' : 'reservas@tudominio.com'}
+                                placeholder={config.proveedor_email === 'gmail' ? 'tu@gmail.com' : 'ventas@tudominio.com'}
                                 value={config.email_remitente || ''}
                                 onChange={(e) => setConfig({ ...config, email_remitente: e.target.value })}
                                 style={{ borderRadius: 12, border: '1px solid var(--color-border)', padding: '12px 16px', fontSize: '0.95rem', width: '100%', background: 'var(--color-bg-elevated)' }}

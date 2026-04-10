@@ -5,8 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 const ALLOWED_ORIGINS = [
     'http://localhost:3002',
     'http://localhost:5173',
-    'https://quipureservas.com',
-    'https://www.quipureservas.com',
+    'https://leads.sellvende.com',
 ]
 
 function getCorsHeaders(req: Request) {
@@ -35,6 +34,30 @@ serve(async (req: Request) => {
         // Fetch auth header to forward to user token or use service key for internal logic
         const authHeader = req.headers.get('Authorization')
         if (!authHeader) throw new Error('Sin autorización')
+        
+        const token = authHeader.replace('Bearer ', '').trim();
+        const isServiceRole = token === SUPABASE_SERVICE_KEY;
+
+        // Verify user JWT token and instantiate client with user's context
+        if (!isServiceRole) {
+            const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+            const authClient = createClient(SUPABASE_URL, anonKey, { global: { headers: { Authorization: authHeader } } });
+            
+            const { data: { user }, error: authErr } = await authClient.auth.getUser();
+            if (authErr || !user) throw new Error('Token inválido o expirado.');
+
+            // Re-check agency access under user's RLS constraints
+            const { data: userAgencias, error: rlsErr } = await authClient
+                .from('usuarios_agencia')
+                .select('agencia_id')
+                .eq('agencia_id', agencia_id)
+                .limit(1);
+            
+            if (rlsErr || !userAgencias || userAgencias.length === 0) {
+                console.warn(`[Security IDOR Block] User attempted to access sync for agency ${agencia_id}`);
+                throw new Error('Prohibido: No perteneces a la agencia solicitada (IDOR Prevented).');
+            }
+        }
 
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
@@ -74,7 +97,7 @@ serve(async (req: Request) => {
         // 4. Fetch leads
         for (const form of forms) {
             const formName = form.name || 'Formulario Meta'
-            const tourFromForm = formName.split('-')[0].trim()
+            const productoFromForm = formName.split('-')[0].trim()
 
             let url = `https://graph.facebook.com/v19.0/${form.id}/leads?fields=id,field_data,created_time,platform&limit=100&access_token=${token}`
 
@@ -90,7 +113,7 @@ serve(async (req: Request) => {
                     if (metaId && seenMetaIds.has(metaId)) { totalSkipped++; continue }
 
                     const fields = lead.field_data || []
-                    let nombre = '', email = '', telefono = '', campana = tourFromForm
+                    let nombre = '', email = '', telefono = '', campana = productoFromForm
                     let idioma = 'ES', personas = '', temporada = '', notas = ''
                     let plataforma = 'facebook'
                     let origen = 'Facebook Ads'
@@ -112,7 +135,7 @@ serve(async (req: Request) => {
                         if (fn.includes('email') || fn.includes('correo')) email = fv
                         else if (fn.includes('name') || fn.includes('nombre') || fn.includes('full') || fn.includes('first')) nombre = nombre ? nombre + ' ' + fv : fv
                         else if (fn.includes('phone') || fn.includes('celular') || fn.includes('whatsapp') || fn.includes('telefono')) telefono = fv
-                        else if (fn.includes('tour') || fn.includes('campaign') || fn.includes('campana') || fn.includes('paquete')) campana = fv
+                        else if (fn.includes('producto') || fn.includes('tour') || fn.includes('campaign') || fn.includes('campana') || fn.includes('paquete')) campana = fv
                         else if (fn.includes('language') || fn.includes('idioma')) idioma = fv.toUpperCase().includes('EN') ? 'EN' : 'ES'
                         else if (fn.includes('cuanta') || fn.includes('persona') || fn.includes('pasajero') || fn.includes('pax')) personas = fv
                         else if (fn.includes('cuando') || fn.includes('fecha') || fn.includes('viaj') || fn.includes('travel') || fn.includes('temporada') || fn.includes('mes')) temporada = fv
@@ -132,7 +155,7 @@ serve(async (req: Request) => {
                         nombre,
                         email: hasEmail ? cleanEmail : '',
                         telefono: cleanPhone,
-                        tour_nombre: campana,
+                        producto_interes: campana,
                         origen,
                         plataforma,
                         form_name: formName,

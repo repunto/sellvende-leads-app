@@ -108,8 +108,8 @@ function PasoRow({ paso, index, prevDia, filteredEmail, filteredWA, onUpdate, on
 function SecuenciaForm({ editingSecuencia, plantillasEmail, plantillasWA, metaForms, onSave, onCancel }) {
     const [form, setForm] = useState(
         editingSecuencia
-            ? { nombre: editingSecuencia.nombre, descripcion: editingSecuencia.descripcion || '', activa: editingSecuencia.activa, tour_match: editingSecuencia.tour_match || editingSecuencia.nombre || '' }
-            : { nombre: '', descripcion: '', activa: true, tour_match: '' }
+            ? { nombre: editingSecuencia.nombre, descripcion: editingSecuencia.descripcion || '', activa: editingSecuencia.activa, producto_match: editingSecuencia.producto_match || editingSecuencia.nombre || '' }
+            : { nombre: '', descripcion: '', activa: true, producto_match: '' }
     )
     const [pasos, setPasos] = useState(
         editingSecuencia
@@ -118,8 +118,8 @@ function SecuenciaForm({ editingSecuencia, plantillasEmail, plantillasWA, metaFo
     )
     const [saving, setSaving] = useState(false)
 
-    const filteredEmail = plantillasEmail.filter(t => t.origen === form.tour_match)
-    const filteredWA    = plantillasWA.filter(t => t.origen === form.tour_match)
+    const filteredEmail = plantillasEmail.filter(t => t.origen === form.producto_match)
+    const filteredWA    = plantillasWA.filter(t => t.origen === form.producto_match)
 
     const addPaso = () => {
         const last = pasos.at(-1)
@@ -190,10 +190,10 @@ function SecuenciaForm({ editingSecuencia, plantillasEmail, plantillasWA, metaFo
                                 <div style={{ position: 'relative' }}>
                                     <select
                                         className="form-control"
-                                        value={form.tour_match}
+                                        value={form.producto_match}
                                         onChange={e => {
                                             const val = e.target.value
-                                            setForm(f => ({ ...f, tour_match: val, nombre: val }))
+                                            setForm(f => ({ ...f, producto_match: val, nombre: val }))
                                             if (val && pasos.length === 0) {
                                                 setPasos([{ dia_envio: 1, plantilla_email_id: '', plantilla_whatsapp_id: '' }])
                                             }
@@ -210,7 +210,7 @@ function SecuenciaForm({ editingSecuencia, plantillasEmail, plantillasWA, metaFo
                         </div>
 
                         <div className="form-group" style={{ marginBottom: 20 }}>
-                            <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 8 }}>Descripción (Opcional)</label>
+                            <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 8 }}>Descripción (Extra)</label>
                             <textarea
                                 className="form-control"
                                 value={form.descripcion}
@@ -465,7 +465,7 @@ function SecuenciasTab({
                                         <td style={{ padding: '24px 20px', border: 'none', borderTopLeftRadius: 16, borderBottomLeftRadius: 16 }}>
                                             <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-text)', marginBottom: 6 }}>{s.nombre}</div>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                                                {s.tour_match ? s.tour_match.split(',').map((tag, i) => (
+                                                {s.producto_match ? s.producto_match.split(',').map((tag, i) => (
                                                     <span key={i} style={{ fontSize: '0.7rem', fontWeight: 700, background: 'var(--color-primary-soft)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase' }}>📋 {tag.trim()}</span>
                                                 )) : (
                                                     <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>General (aplica a todos los formularios)</span>

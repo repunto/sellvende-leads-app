@@ -117,7 +117,7 @@ export function wrapEmailTemplate({
 }) {
     const safeBody = sanitizeQuillHtml(body);
 
-    const displayPreview = previewText || `${agencyName} — Información importante para tu viaje`;
+    const displayPreview = previewText || `${agencyName} — Información importante para ti`;
 
     // Sanitize Logo URL
     let safeLogoUrl = '';

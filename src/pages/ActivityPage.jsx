@@ -45,30 +45,27 @@ export default function ActivityPage() {
                 .select(`
                     id, created_at, tipo, estado, email_enviado, mensaje_error,
                     lead_id, asunto,
-                    lead:leads(nombre, email, tour_nombre, form_name, unsubscribed)
+                    lead:leads(nombre, email, producto_interes, form_name, unsubscribed)
                 `)
                 .order('created_at', { ascending: false })
                 .limit(1000);
 
             if (logErr) throw logErr;
 
-            // Build desglose by tour+step
+            // Build desglose by producto+step
             const bd = {};
             (logData || []).forEach(log => {
                 if (log.estado !== 'enviado') return;
-                let tour = log.lead?.tour_nombre || log.lead?.form_name || 'Sin Tour';
-                if (tour.includes(' - ')) tour = tour.split(' - ')[0].trim();
-                if (tour.toLowerCase().includes('inka jungle')) tour = 'Inka Jungle';
-                else if (tour.toLowerCase().includes('salkantay')) tour = 'Salkantay';
-                else tour = tour.charAt(0).toUpperCase() + tour.slice(1).toLowerCase();
+                let producto = log.lead?.producto_interes || log.lead?.form_name || 'Sin Producto';
+                if (producto.includes(' - ')) producto = producto.split(' - ')[0].trim();
 
                 let stepName = log.asunto || 'Paso Regular';
                 if (stepName.includes('aventura de tu vida')) stepName = 'Email 1: Bienvenida e Itinerario';
                 if (stepName.includes('Cotización')) stepName = 'Secuencia Original Salkantay (Manual/Antigua)';
 
-                if (!bd[tour]) bd[tour] = { total: 0, steps: {} };
-                bd[tour].total += 1;
-                bd[tour].steps[stepName] = (bd[tour].steps[stepName] || 0) + 1;
+                if (!bd[producto]) bd[producto] = { total: 0, steps: {} };
+                bd[producto].total += 1;
+                bd[producto].steps[stepName] = (bd[producto].steps[stepName] || 0) + 1;
             });
             setBreakdown(bd);
 
@@ -246,24 +243,24 @@ export default function ActivityPage() {
                 </div>
             </div>
 
-            {/* Desglose por tour */}
+            {/* Desglose por producto */}
             <div className="timeline-container glass-card" style={{ marginBottom: '24px' }}>
                 <div className="timeline-header">
-                    <h2>Desglose de Envíos Exactos (Por Tour y Paso)</h2>
+                    <h2>Desglose de Envíos Exactos (Por Producto y Paso)</h2>
                 </div>
                 <div className="timeline-content" style={{ padding: '20px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-                        {Object.keys(breakdown).map(tour => (
-                            <div key={tour} style={{ background: 'var(--color-bg-hover)', padding: '16px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                        {Object.keys(breakdown).map(producto => (
+                            <div key={producto} style={{ background: 'var(--color-bg-hover)', padding: '16px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
                                 <h3 style={{ margin: '0 0 16px 0', color: 'var(--color-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '1.1rem' }}>{tour}</span>
-                                    <span style={{ fontSize: '0.85rem', background: 'var(--color-accent)', padding: '4px 10px', borderRadius: '20px', color: '#fff' }}>{breakdown[tour].total} enviados total</span>
+                                    <span style={{ fontSize: '1.1rem' }}>{producto}</span>
+                                    <span style={{ fontSize: '0.85rem', background: 'var(--color-accent)', padding: '4px 10px', borderRadius: '20px', color: '#fff' }}>{breakdown[producto].total} enviados total</span>
                                 </h3>
                                 <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                                    {Object.keys(breakdown[tour].steps).map(step => (
+                                    {Object.keys(breakdown[producto].steps).map(step => (
                                         <li key={step} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--color-border)' }}>
                                             <span style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', maxWidth: '80%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={step}>{step}</span>
-                                            <span style={{ fontWeight: 600, color: 'var(--color-text)', background: 'var(--color-bg)', padding: '4px 10px', borderRadius: '6px' }}>{breakdown[tour].steps[step]} envíos</span>
+                                            <span style={{ fontWeight: 600, color: 'var(--color-text)', background: 'var(--color-bg)', padding: '4px 10px', borderRadius: '6px' }}>{breakdown[producto].steps[step]} envíos</span>
                                         </li>
                                     ))}
                                 </ul>
@@ -358,7 +355,7 @@ export default function ActivityPage() {
                                     <div className="feed-details">
                                         <div className="feed-title">
                                             <strong style={{ textTransform: 'capitalize' }}>{log.lead?.nombre || 'Lead Desconocido'}</strong>
-                                            <span className="feed-tour"> ({log.lead?.tour_nombre || 'Sin tour'})</span>
+                                            <span className="feed-producto"> ({log.lead?.producto_interes || 'Sin producto'})</span>
                                             {log.lead?.unsubscribed && <span className="feed-badge-unsub">🚫 Unsub</span>}
                                         </div>
                                         <div className="feed-meta">
@@ -466,8 +463,8 @@ export default function ActivityPage() {
                                     <strong>{selectedLog.lead?.nombre} &lt;{selectedLog.lead?.email || selectedLog.email_enviado}&gt;</strong>
                                 </div>
                                 <div className="xray-box">
-                                    <span className="xray-label">Tour</span>
-                                    <strong>{selectedLog.lead?.tour_nombre || 'N/A'}</strong>
+                                    <span className="xray-label">Producto</span>
+                                    <strong>{selectedLog.lead?.producto_interes || 'N/A'}</strong>
                                 </div>
                                 <div className="xray-box">
                                     <span className="xray-label">Canal del Servidor</span>

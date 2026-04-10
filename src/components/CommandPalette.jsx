@@ -7,7 +7,7 @@ import { Search, User, LayoutDashboard, Ticket, CalendarDays, Settings, X, Activ
 const STATIC_ACTIONS = [
     { id: 'nav-dashboard', type: 'navegacion', title: 'Ir al Dashboard', icon: <LayoutDashboard size={18} />, path: '/' },
     { id: 'nav-leads', type: 'navegacion', title: 'Ir a Leads', icon: <User size={18} />, path: '/leads' },
-    { id: 'nav-reservas', type: 'navegacion', title: 'Ir a Reservas', icon: <Ticket size={18} />, path: '/reservas' },
+    { id: 'nav-ventas', type: 'navegacion', title: 'Ir a Ventas', icon: <Ticket size={18} />, path: '/ventas' },
     { id: 'nav-calendario', type: 'navegacion', title: 'Ir a Calendario', icon: <CalendarDays size={18} />, path: '/calendario' },
     { id: 'nav-marketing', type: 'navegacion', title: 'Ir a Marketing ROI', icon: <TrendingUp size={18} />, path: '/marketing' },
     { id: 'nav-radar', type: 'navegacion', title: 'Ir a Radar de Actividad', icon: <Activity size={18} />, path: '/actividad' },

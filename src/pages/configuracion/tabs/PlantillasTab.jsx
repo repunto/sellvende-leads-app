@@ -6,7 +6,7 @@ import { CONFIG_KEYS, EMAIL_CONFIG_KEYS, TIPOS_PLANTILLA, TIPOS_MARKETING, TIPOS
 
 export default function PlantillasTab({ showToast, agencia }) {
     const [plantillas, setPlantillas] = useState([])
-    const [tours, setTours] = useState([])
+    const [productos, setProductos] = useState([])
     const [loading, setLoading] = useState(true)
     const [showForm, setShowForm] = useState(false)
     const [editingPlantilla, setEditingPlantilla] = useState(null)
@@ -16,7 +16,7 @@ export default function PlantillasTab({ showToast, agencia }) {
     const [formData, setFormData] = useState({
         nombre: '',
         tipo: TIPOS_PLANTILLA[0],
-        tour_id: '',
+        producto_id: '',
         origen: '',
         asunto: '',
         contenido_html: '',
@@ -34,9 +34,9 @@ export default function PlantillasTab({ showToast, agencia }) {
 
     async function loadData() {
         setLoading(true)
-        const [plantillasRes, toursRes, leadsRes] = await Promise.all([
+        const [plantillasRes, productosRes, leadsRes] = await Promise.all([
             supabase.from('plantillas_email').select('*').eq('agencia_id', agencia.id).order('tipo'),
-            supabase.from('tours').select('id, nombre').eq('agencia_id', agencia.id).eq('activo', true).order('nombre'),
+            supabase.from('productos').select('id, nombre').eq('agencia_id', agencia.id).eq('activo', true).order('nombre'),
             supabase.from('leads').select('form_name').not('form_name', 'is', null)
         ])
 
@@ -45,7 +45,7 @@ export default function PlantillasTab({ showToast, agencia }) {
             arr.sort((a,b) => TIPOS_PLANTILLA.indexOf(a.tipo) - TIPOS_PLANTILLA.indexOf(b.tipo))
             setPlantillas(arr)
         }
-        if (!toursRes.error) setTours(toursRes.data || [])
+        if (!productosRes.error) setProductos(productosRes.data || [])
         if (leadsRes.data && leadsRes.data.length > 0) {
             const unique = [...new Set(leadsRes.data.filter(d => !!d.form_name).map(d => d.form_name))].sort();
             setMetaForms(unique);
@@ -59,7 +59,7 @@ export default function PlantillasTab({ showToast, agencia }) {
             setFormData({
                 nombre: plantilla.nombre || '',
                 tipo: plantilla.tipo || TIPOS_PLANTILLA[0],
-                tour_id: plantilla.tour_id || '',
+                producto_id: plantilla.producto_id || '',
                 origen: plantilla.origen || '',
                 asunto: plantilla.asunto || '',
                 contenido_html: plantilla.contenido_html || '',
@@ -68,7 +68,7 @@ export default function PlantillasTab({ showToast, agencia }) {
         } else {
             setEditingPlantilla(null)
             setFormData({
-                nombre: '', tipo: TIPOS_PLANTILLA[0], tour_id: '', origen: '', asunto: '',
+                nombre: '', tipo: TIPOS_PLANTILLA[0], producto_id: '', origen: '', asunto: '',
                 contenido_html: '', idioma: 'ES',
             })
         }
@@ -82,11 +82,11 @@ export default function PlantillasTab({ showToast, agencia }) {
             
             // Clean up mutually exclusive fields based on phase to fix corrupt historical DB state
             if (TIPOS_MARKETING.includes(payload.tipo)) {
-                payload.tour_id = null;
+                payload.producto_id = null;
                 if (payload.origen === '') payload.origen = null;
             } else {
                 payload.origen = null;
-                if (payload.tour_id === '') payload.tour_id = null;
+                if (payload.producto_id === '') payload.producto_id = null;
             }
 
             if (editingPlantilla) {
@@ -170,7 +170,7 @@ export default function PlantillasTab({ showToast, agencia }) {
                                                 <div style={{ color: 'var(--color-accent)', fontWeight: 700, marginBottom: 2, fontSize: '0.85rem' }}>{p.nombre || 'Sin Nombre'}</div>
                                                 <div style={{ color: 'var(--color-text-secondary)', fontWeight: 400 }}>{p.asunto || '—'}</div>
                                             </td>
-                                            <td>{tours.find(t => t.id === p.tour_id)?.nombre || p.origen || 'General'}</td>
+                                            <td>{productos.find(t => t.id === p.producto_id)?.nombre || p.origen || 'General'}</td>
                                             <td>{p.idioma}</td>
                                             <td>
                                                 <div style={{ display: 'flex', gap: 6 }}>
@@ -189,7 +189,7 @@ export default function PlantillasTab({ showToast, agencia }) {
                     </div>
 
                     <div>
-                        <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-accent)', textTransform: 'uppercase', marginBottom: 12 }}>💼 Módulo: Operaciones & Reservas</h3>
+                        <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-accent)', textTransform: 'uppercase', marginBottom: 12 }}>💼 Módulo: Operaciones & Ventas</h3>
                         <div className="table-container">
                             <table className="data-table">
                                 <thead>
@@ -213,7 +213,7 @@ export default function PlantillasTab({ showToast, agencia }) {
                                                 <div style={{ color: 'var(--color-accent)', fontWeight: 700, marginBottom: 2, fontSize: '0.85rem' }}>{p.nombre || 'Sin Nombre'}</div>
                                                 <div style={{ color: 'var(--color-text-secondary)', fontWeight: 400 }}>{p.asunto || '—'}</div>
                                             </td>
-                                            <td>{tours.find(t => t.id === p.tour_id)?.nombre || p.origen || 'General'}</td>
+                                            <td>{productos.find(t => t.id === p.producto_id)?.nombre || p.origen || 'General'}</td>
                                             <td>{p.idioma}</td>
                                             <td>
                                                 <div style={{ display: 'flex', gap: 6 }}>
@@ -224,7 +224,7 @@ export default function PlantillasTab({ showToast, agencia }) {
                                         </tr>
                                     ))}
                                     {plantillas.filter(p => TIPOS_OPERATIVAS.includes(p.tipo)).length === 0 && (
-                                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: 20, color: 'var(--color-text-muted)' }}>Sin plantillas de Reservas creadas.</td></tr>
+                                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: 20, color: 'var(--color-text-muted)' }}>Sin plantillas de Ventas creadas.</td></tr>
                                     )}
                                 </tbody>
                             </table>
@@ -255,11 +255,11 @@ export default function PlantillasTab({ showToast, agencia }) {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                                 <div className="form-group">
                                     <label className="form-label">Sector / Tipo de Email *</label>
-                                    <select className="form-select" value={formData.tipo} onChange={(e) => setFormData({ ...formData, tipo: e.target.value, tour_id: '', origen: '' })}>
+                                    <select className="form-select" value={formData.tipo} onChange={(e) => setFormData({ ...formData, tipo: e.target.value, producto_id: '', origen: '' })}>
                                         <optgroup label="🔥 Fase de Marketing (Leads)">
                                             {TIPOS_MARKETING.map(t => <option key={t} value={t}>{TIPOS_LABELS[t]}</option>)}
                                         </optgroup>
-                                        <optgroup label="💼 Fase de Operaciones (Reservas)">
+                                        <optgroup label="💼 Fase de Operaciones (Ventas)">
                                             {TIPOS_OPERATIVAS.map(t => <option key={t} value={t}>{TIPOS_LABELS[t]}</option>)}
                                         </optgroup>
                                     </select>
@@ -276,9 +276,9 @@ export default function PlantillasTab({ showToast, agencia }) {
                                     ) : (
                                         <>
                                             <label className="form-label">📋 Formulario de Origen</label>
-                                            <select className="form-select" value={formData.tour_id || ''} onChange={(e) => setFormData({ ...formData, tour_id: e.target.value })}>
+                                            <select className="form-select" value={formData.producto_id || ''} onChange={(e) => setFormData({ ...formData, producto_id: e.target.value })}>
                                                 <option value="">General (Todos los formularios)</option>
-                                                {tours.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                                                {productos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                                             </select>
                                         </>
                                     )}
@@ -294,7 +294,7 @@ export default function PlantillasTab({ showToast, agencia }) {
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Asunto del Email *</label>
-                                <input className="form-input" required value={formData.asunto} onChange={(e) => setFormData({ ...formData, asunto: e.target.value })} placeholder="Ej. Tu cotización para {tour} — {agencia}" />
+                                <input className="form-input" required value={formData.asunto} onChange={(e) => setFormData({ ...formData, asunto: e.target.value })} placeholder="Ej. Tu cotización para {producto} — {agencia}" />
                             </div>
                             
                             <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -313,7 +313,7 @@ export default function PlantillasTab({ showToast, agencia }) {
                                 <div style={{ marginTop: '16px', padding: '12px 16px', background: 'var(--color-bg-elevated)', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
                                     <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 10, color: 'var(--color-primary)' }}>✨ Variables Dinámicas (Haz clic para insertar)</div>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                        {SHORTCODES_HELP.filter(s => TIPOS_MARKETING.includes((formData.tipo||'').split('::')[0]) ? !['{fecha}', '{pax}', '{precio}', '{adelanto}', '{saldo}', '{opcionales}'].includes(s.code) : true).map(s => (
+                                        {SHORTCODES_HELP.filter(s => TIPOS_MARKETING.includes((formData.tipo||'').split('::')[0]) ? !['{fecha}', '{pax}', '{precio}', '{adelanto}', '{saldo}', '{extras}'].includes(s.code) : true).map(s => (
                                             <button 
                                                 type="button" 
                                                 key={s.code} 

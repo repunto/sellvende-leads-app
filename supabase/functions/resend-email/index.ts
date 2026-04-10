@@ -7,8 +7,7 @@ import nodemailer from "npm:nodemailer"
 const ALLOWED_ORIGINS = [
     'http://localhost:3002',
     'http://localhost:5173',
-    'https://quipureservas.com',
-    'https://www.quipureservas.com',
+    'https://leads.sellvende.com',
 ]
 
 function getCorsHeaders(req: Request) {
@@ -35,29 +34,30 @@ const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 // ============================================================
 // SECURITY VERIFICATION (JWT)
 // ============================================================
-async function verifyAuth(req: Request): Promise<boolean> {
+async function verifyAuth(req: Request): Promise<{ isAuthenticated: boolean, isServiceRole: boolean, authClient?: any }> {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return false;
+    if (!authHeader) return { isAuthenticated: false, isServiceRole: false };
     
     const token = authHeader.replace('Bearer ', '').trim();
-    if (!token) return false;
+    if (!token) return { isAuthenticated: false, isServiceRole: false };
 
-    // Allow internal service-role calls
+    // Allow internal service-role calls (for cron jobs / backend processes)
     if (token === SUPABASE_SERVICE_KEY) {
-        return true;
+        return { isAuthenticated: true, isServiceRole: true };
     }
 
-    // Verify user JWT token
+    // Verify user JWT token and instantiate client with user's context
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-    const authClient = createClient(SUPABASE_URL, anonKey);
-    const { data: { user }, error } = await authClient.auth.getUser(token);
+    const authClient = createClient(SUPABASE_URL, anonKey, { global: { headers: { Authorization: authHeader } } });
     
-    if (error) {
-        console.warn('[Resend Auth] getUser error:', error.message);
-        return false;
+    const { data: { user }, error } = await authClient.auth.getUser();
+    
+    if (error || !user) {
+        console.warn('[Resend Auth] getUser error:', error?.message);
+        return { isAuthenticated: false, isServiceRole: false };
     }
     
-    return !!user;
+    return { isAuthenticated: true, isServiceRole: false, authClient };
 }
 serve(async (req) => {
     const corsHeaders = getCorsHeaders(req)
@@ -67,7 +67,7 @@ serve(async (req) => {
     }
 
     // Verify JWT Auth
-    const isAuthenticated = await verifyAuth(req);
+    const { isAuthenticated, isServiceRole, authClient } = await verifyAuth(req);
     if (!isAuthenticated) {
         console.warn('[Resend-Email] Unauthorized execution attempt blocked.');
         return new Response(JSON.stringify({ error: 'Unauthorized. Require valid Bearer token.' }), {
@@ -98,9 +98,24 @@ serve(async (req) => {
             )
         }
 
+        // ── SECURITY CHECK (IDOR PREVENTION) ─────────────────────────────
+        if (!isServiceRole && authClient) {
+            // Re-check agency access under user's RLS constraints
+            const { data: userAgencias, error: rlsErr } = await authClient
+                .from('usuarios_agencia')
+                .select('agencia_id')
+                .eq('agencia_id', agencia_id)
+                .limit(1);
+            
+            if (rlsErr || !userAgencias || userAgencias.length === 0) {
+                console.warn(`[Security IDOR Block] User attempted to access credentials for agency ${agencia_id}`);
+                return jsonResponse({ error: 'Prohibido: No perteneces a la agencia solicitada (IDOR Prevented).' }, 403, corsHeaders);
+            }
+        }
+
         // ── Read credentials from DB using SERVICE ROLE (bypasses RLS) ──
-        // IMPORTANT: We use service role so the function can read credentials for
-        // any agencia_id. RLS isolation is maintained by validating agencia_id.
+        // IMPORTANT: We use service role so the function can read credentials 
+        // safely now that we mathematically asserted ownership via RLS above.
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
             auth: { persistSession: false }
         })

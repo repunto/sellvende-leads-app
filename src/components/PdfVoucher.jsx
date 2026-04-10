@@ -1,22 +1,22 @@
 import React, { forwardRef } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 
-const PdfVoucher = forwardRef(({ reserva, agencia }, ref) => {
-    if (!reserva) return null
+const PdfVoucher = forwardRef(({ venta, agencia }, ref) => {
+    if (!venta) return null
 
-    const lead = reserva.lead || {}
+    const lead = venta.lead || {}
     const agenciaNombre = agencia?.nombre || 'Travel Agency'
     const agenciaTelefono = agencia?.whatsapp || ''
 
     // Compute saldo_pendiente since it's not a DB column
-    const saldoPendiente = Number(reserva.total_venta || reserva.precio_venta || 0) - Number(reserva.adelanto || 0)
+    const saldoPendiente = Number(venta.total_venta || venta.precio_venta || 0) - Number(venta.adelanto || 0)
     
     // Generar link de WhatsApp para soporte
-    const waLink = agenciaTelefono ? `https://wa.me/${agenciaTelefono.replace(/\D/g, '')}?text=Hola, tengo una consulta sobre mi reserva #${reserva.id ? reserva.id.substring(0,8).toUpperCase() : 'Temp'}` : 'https://wa.me/'
+    const waLink = agenciaTelefono ? `https://wa.me/${agenciaTelefono.replace(/\D/g, '')}?text=Hola, tengo una consulta sobre mi venta #${venta.id ? venta.id.substring(0,8).toUpperCase() : 'Temp'}` : 'https://wa.me/'
 
     // Formatear fechas
-    const fechaReserva = new Date(reserva.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })
-    const fechaTour = reserva.fecha_tour ? new Date(reserva.fecha_tour).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Por definir'
+    const fechaVenta = new Date(venta.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })
+    const fechaProducto = venta.fecha_servicio ? new Date(venta.fecha_servicio).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : 'Por definir'
 
     return (
         <div style={{ position: 'absolute', top: '-10000px', left: '-10000px', width: '800px' }}>
@@ -70,10 +70,10 @@ const PdfVoucher = forwardRef(({ reserva, agencia }, ref) => {
                                 Booking Reference
                             </div>
                             <div style={{ fontSize: '42px', fontWeight: 900, color: '#ffffff', marginBottom: 8, letterSpacing: '-1px' }}>
-                                {reserva.id ? reserva.id.substring(0,8).toUpperCase() : 'Temp'}
+                                {venta.id ? venta.id.substring(0,8).toUpperCase() : 'Temp'}
                             </div>
                             <div style={{ fontSize: '13px', color: '#94a3b8' }}>
-                                Issued on: {fechaReserva}
+                                Issued on: {fechaVenta}
                             </div>
                         </div>
                     </div>
@@ -99,17 +99,17 @@ const PdfVoucher = forwardRef(({ reserva, agencia }, ref) => {
                             
                             <div style={{ marginBottom: '24px' }}>
                                 <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '6px', fontWeight: 600 }}>PRIVATE TOUR</div>
-                                <div style={{ fontSize: '20px', fontWeight: 800, color: '#111827' }}>{reserva.tour?.nombre || lead.tour_nombre || 'Exclusive Experience'}</div>
+                                <div style={{ fontSize: '20px', fontWeight: 800, color: '#111827' }}>{venta.producto?.nombre || lead.producto_interes || 'Exclusive Experience'}</div>
                             </div>
                             
                             <div style={{ marginBottom: '24px', display: 'flex', gap: '30px' }}>
                                 <div>
                                     <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px', fontWeight: 600 }}>DEPARTURE DATE</div>
-                                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#374151' }}>{fechaTour}</div>
+                                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#374151' }}>{fechaProducto}</div>
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px', fontWeight: 600 }}>GUESTS</div>
-                                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#374151' }}>{reserva.pax || lead.personas || 1} Pax</div>
+                                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#374151' }}>{venta.pax || lead.personas || 1} Und.</div>
                                 </div>
                             </div>
                         </div>
@@ -120,17 +120,17 @@ const PdfVoucher = forwardRef(({ reserva, agencia }, ref) => {
                             
                             <div style={{ marginBottom: '24px' }}>
                                 <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px', fontWeight: 600 }}>FULL NAME</div>
-                                <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827' }}>{lead.nombre || reserva.cliente_nombre || 'Guest'}</div>
+                                <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827' }}>{lead.nombre || venta.cliente_nombre || 'Guest'}</div>
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                                 <div>
                                     <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px', fontWeight: 600 }}>CONTACT EMAIL</div>
-                                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', wordBreak: 'break-all' }}>{lead.email || reserva.cliente_email || '—'}</div>
+                                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', wordBreak: 'break-all' }}>{lead.email || venta.cliente_email || '—'}</div>
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px', fontWeight: 600 }}>PHONE</div>
-                                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>{lead.telefono || reserva.cliente_telefono || '—'}</div>
+                                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151' }}>{lead.telefono || venta.cliente_telefono || '—'}</div>
                                 </div>
                             </div>
                         </div>
@@ -145,11 +145,11 @@ const PdfVoucher = forwardRef(({ reserva, agencia }, ref) => {
                         <div style={{ padding: '30px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
                                 <span style={{ color: '#4b5563', fontSize: '16px' }}>Total Package Value</span>
-                                <span style={{ fontSize: '18px', fontWeight: 700, color: '#111827' }}>${Number(reserva.total_venta || reserva.precio_venta || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                <span style={{ fontSize: '18px', fontWeight: 700, color: '#111827' }}>${Number(venta.total_venta || venta.precio_venta || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
                                 <span style={{ color: '#4b5563', fontSize: '16px' }}>Deposit Received</span>
-                                <span style={{ fontSize: '18px', fontWeight: 700, color: '#10b981' }}>- ${Number(reserva.adelanto || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                <span style={{ fontSize: '18px', fontWeight: 700, color: '#10b981' }}>- ${Number(venta.adelanto || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                             </div>
                             
                             <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, #e5e7eb, transparent)', margin: '20px 0' }}></div>
