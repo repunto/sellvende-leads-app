@@ -1,4 +1,4 @@
-# 📚 Historial de Recuperación: QuipuReservas (CONTEXTO)
+# 📚 Historial de Recuperación: Sellvende Leads (CONTEXTO)
 
 Este archivo sirve como un respaldo permanente de la conversación `c2b492ff-a979-45c6-8606-155e90c1e44b`, la cual contiene las implementaciones críticas del motor de automatización y la integración con Meta Ads / WhatsApp.
 
@@ -24,7 +24,7 @@ Se implementó un sistema de "debouncing" en la RAM de la Edge Function `meta-we
 - **Efecto:** Múltiples leads recibidos en el mismo segundo ahora solo disparan **1 sola ejecución** del motor de goteo, ahorrando costos de computación.
 
 ### 4. 🔒 Seguridad y Guardrails
-- **Cross-Tour Violation:** La base de datos ahora bloquea automáticamente cualquier intento de inscribir un lead en un tour que no le corresponde (Protección a nivel SQL).
+- **Cross-Product Violation:** La base de datos ahora bloquea automaticamente cualquier intento de inscribir un lead en un producto que no le corresponde (Proteccion a nivel SQL).
 - **Anti-ReDoS:** Blindaje de las funciones de limpieza de HTML para evitar bucles infinitos en el procesamiento de correos.
 
 ---
@@ -34,4 +34,4 @@ Si alguna vez desaparece de la interfaz visual, puedes encontrar los logs comple
 `C:\Users\Repunto\.gemini\antigravity\brain\c2b492ff-a979-45c6-8606-155e90c1e44b\`
 
 > [!TIP]
-> Puedes pedirme en cualquier momento: *"Carga el contexto del archivo CONTEXTO_QUIPURESERVAS.md"* y estaré al tanto de todos estos detalles técnicos de nuevo.
+> Puedes pedirme en cualquier momento: *"Carga el contexto del archivo CONTEXTO_SELLVENDE.md"* y estaré al tanto de todos estos detalles técnicos de nuevo.

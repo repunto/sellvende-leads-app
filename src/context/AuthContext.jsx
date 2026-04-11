@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
                 // Create a brand-new agency specific to this user — never reuse existing ones
                 const { data: newAgencia, error: agenciaErr } = await supabase
                     .from('agencias')
-                    .insert({ nombre: 'Mi Agencia', plan: 'pro' })
+                    .insert({ nombre: 'Mi Agencia', plan: 'trial' })
                     .select('id')
                     .single()
 
@@ -44,6 +44,28 @@ export function AuthProvider({ children }) {
                     if (!linkErr && newLink) {
                         data = newLink
                         error = null
+                    }
+
+                    // Auto-create trial subscription (14 days)
+                    try {
+                        const { data: planData } = await supabase
+                            .from('planes')
+                            .select('id')
+                            .eq('nombre', 'Profesional')
+                            .single()
+
+                        if (planData) {
+                            await supabase.from('suscripciones').insert({
+                                agencia_id: newAgencia.id,
+                                plan_id: planData.id,
+                                estado: 'trial',
+                                fecha_inicio: new Date().toISOString(),
+                                trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+                            })
+                            console.log('Trial subscription created for new agency')
+                        }
+                    } catch (subErr) {
+                        console.warn('Could not create trial subscription:', subErr)
                     }
                 }
             }

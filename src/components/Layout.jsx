@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { usePlan } from '../hooks/usePlan'
 import CommandPalette from './CommandPalette'
+import { supabase } from '../lib/supabase'
 
-import { LayoutDashboard, Users, ShoppingCart, CalendarDays, Package, Gift, Tag, BarChart2, Users as UsersIcon, Settings, LogOut, Activity, DollarSign } from 'lucide-react'
+import { LayoutDashboard, Users, ShoppingCart, CalendarDays, Package, Gift, Tag, BarChart2, Users as UsersIcon, Settings, LogOut, Activity, DollarSign, CreditCard } from 'lucide-react'
 
 const navItems = [
     { path: '/', icon: <LayoutDashboard size={20} strokeWidth={2.5} />, label: 'Dashboard' },
@@ -14,19 +16,32 @@ const navItems = [
 ]
 
 const configItems = [
+    { path: '/analytics', icon: <BarChart2 size={20} strokeWidth={2.5} />, label: 'Analítica y ROI' },
+    { path: '/finanzas', icon: <DollarSign size={20} strokeWidth={2.5} />, label: 'Finanzas & ROAS' },
     { path: '/productos', icon: <Package size={20} strokeWidth={2.5} />, label: 'Productos' },
     { path: '/extras', icon: <Gift size={20} strokeWidth={2.5} />, label: 'Extras / Up-sells' },
     { path: '/descuentos', icon: <Tag size={20} strokeWidth={2.5} />, label: 'Descuentos' },
-    { path: '/finanzas', icon: <DollarSign size={20} strokeWidth={2.5} />, label: 'Finanzas & ROAS' },
-    { path: '/marketing', icon: <BarChart2 size={20} strokeWidth={2.5} />, label: 'Automatización Email' },
+    { path: '/marketing', icon: <Activity size={20} strokeWidth={2.5} />, label: 'Automatización Email' },
     { path: '/asesores', icon: <UsersIcon size={20} strokeWidth={2.5} />, label: 'Equipo Comercial' },
     { path: '/configuracion', icon: <Settings size={20} strokeWidth={2.5} />, label: 'Configuración' },
+    { path: '/billing', icon: <CreditCard size={20} strokeWidth={2.5} />, label: 'Plan y Facturación' },
 ]
 
 export default function Layout({ children }) {
     const { user, agencia, rol, signOut } = useAuth()
+    const { isTrial, isExpired, isActive, daysRemaining, planName } = usePlan()
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+    const [nombreVisible, setNombreVisible] = useState('')
     const location = useLocation()
+
+    useEffect(() => {
+        if (!agencia?.id) return
+        supabase.from('configuracion').select('valor').eq('agencia_id', agencia.id).eq('clave', 'nombre_visible').maybeSingle()
+            .then(({ data }) => {
+                if (data?.valor) setNombreVisible(data.valor)
+            })
+            .catch(() => {})
+    }, [agencia?.id])
 
     const initials = user?.email
         ? user.email.substring(0, 2).toUpperCase()
@@ -64,9 +79,56 @@ export default function Layout({ children }) {
                     </div>
                 </div>
 
-                <div style={{ padding: '0 24px 20px', fontSize: '12px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500 }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 8px rgba(16, 185, 129, 0.4)' }}></div>
-                    Espacio: <span style={{ color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agencia?.nombre || 'Cargando...'}</span>
+                <div style={{ padding: '0 20px', marginBottom: '24px' }}>
+                    <NavLink to="/billing" style={{ textDecoration: 'none', display: 'block' }}>
+                        <div 
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                border: '1px solid rgba(255, 255, 255, 0.08)',
+                                borderRadius: '12px',
+                                padding: '12px 14px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px',
+                                transition: 'all 0.2s ease',
+                                cursor: 'pointer',
+                            }}
+                            onMouseEnter={(e) => { 
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)' 
+                                e.currentTarget.style.transform = 'translateY(-1px)'
+                            }}
+                            onMouseLeave={(e) => { 
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
+                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)' 
+                                e.currentTarget.style.transform = 'translateY(0)'
+                            }}
+                        >
+                            <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Entorno de Trabajo</div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                                <span style={{ color: '#f8fafc', fontWeight: 600, fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 8px rgba(16, 185, 129, 0.5)', flexShrink: 0 }}></div>
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{nombreVisible || agencia?.nombre || 'Cargando...'}</span>
+                                </span>
+                                <div style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 800,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    flexShrink: 0,
+                                    ...(isExpired ? { background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' } 
+                                     : isTrial ? { background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' } 
+                                     : { background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05))', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }),
+                                }}>
+                                    {isExpired ? 'VENCIDO' : isTrial ? `TRIAL · ${daysRemaining}d` : `${planName}`}
+                                </div>
+                            </div>
+                        </div>
+                    </NavLink>
                 </div>
 
                 <nav className="sidebar-nav">
@@ -134,6 +196,41 @@ export default function Layout({ children }) {
             </aside>
 
             <main className="main-content">
+                {/* Expired / Trial Warning Banner */}
+                {isExpired && (
+                    <div style={{
+                        background: 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.05))',
+                        border: '1px solid rgba(239,68,68,0.2)',
+                        borderRadius: 12,
+                        padding: '14px 20px',
+                        marginBottom: 20,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 16,
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: '1.2rem' }}>🔒</span>
+                            <div>
+                                <div style={{ fontWeight: 700, color: '#fca5a5', fontSize: '0.9rem' }}>Tu plan ha vencido — Modo solo lectura</div>
+                                <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Activa tu suscripción para seguir creando leads y enviando emails.</div>
+                            </div>
+                        </div>
+                        <NavLink to="/billing" style={{
+                            padding: '8px 20px',
+                            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                            color: 'white',
+                            borderRadius: 10,
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                            textDecoration: 'none',
+                            whiteSpace: 'nowrap',
+                            boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
+                        }}>
+                            Activar Plan 🚀
+                        </NavLink>
+                    </div>
+                )}
                 {children}
             </main>
             <CommandPalette />

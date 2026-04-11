@@ -80,14 +80,11 @@ export default function PlantillasTab({ showToast, agencia }) {
         try {
             const payload = { ...formData, agencia_id: agencia.id }
             
-            // Clean up mutually exclusive fields based on phase to fix corrupt historical DB state
-            if (TIPOS_MARKETING.includes(payload.tipo)) {
-                payload.producto_id = null;
-                if (payload.origen === '') payload.origen = null;
-            } else {
-                payload.origen = null;
-                if (payload.producto_id === '') payload.producto_id = null;
-            }
+            // producto_id does NOT exist in plantillas_email table — remove before saving
+            delete payload.producto_id;
+            
+            // Clean up origen field
+            if (payload.origen === '') payload.origen = null;
 
             if (editingPlantilla) {
                 const { error } = await supabase.from('plantillas_email').update(payload).eq('id', editingPlantilla.id)
@@ -170,7 +167,7 @@ export default function PlantillasTab({ showToast, agencia }) {
                                                 <div style={{ color: 'var(--color-accent)', fontWeight: 700, marginBottom: 2, fontSize: '0.85rem' }}>{p.nombre || 'Sin Nombre'}</div>
                                                 <div style={{ color: 'var(--color-text-secondary)', fontWeight: 400 }}>{p.asunto || '—'}</div>
                                             </td>
-                                            <td>{productos.find(t => t.id === p.producto_id)?.nombre || p.origen || 'General'}</td>
+                                            <td>{p.origen || 'General'}</td>
                                             <td>{p.idioma}</td>
                                             <td>
                                                 <div style={{ display: 'flex', gap: 6 }}>
@@ -213,7 +210,7 @@ export default function PlantillasTab({ showToast, agencia }) {
                                                 <div style={{ color: 'var(--color-accent)', fontWeight: 700, marginBottom: 2, fontSize: '0.85rem' }}>{p.nombre || 'Sin Nombre'}</div>
                                                 <div style={{ color: 'var(--color-text-secondary)', fontWeight: 400 }}>{p.asunto || '—'}</div>
                                             </td>
-                                            <td>{productos.find(t => t.id === p.producto_id)?.nombre || p.origen || 'General'}</td>
+                                            <td>{p.origen || 'General'}</td>
                                             <td>{p.idioma}</td>
                                             <td>
                                                 <div style={{ display: 'flex', gap: 6 }}>
@@ -275,9 +272,9 @@ export default function PlantillasTab({ showToast, agencia }) {
                                         </>
                                     ) : (
                                         <>
-                                            <label className="form-label">📋 Formulario de Origen</label>
+                                            <label className="form-label">📋 Producto Asociado</label>
                                             <select className="form-select" value={formData.producto_id || ''} onChange={(e) => setFormData({ ...formData, producto_id: e.target.value })}>
-                                                <option value="">General (Todos los formularios)</option>
+                                                <option value="">General (Todos los productos)</option>
                                                 {productos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
                                             </select>
                                         </>
@@ -354,4 +351,3 @@ export default function PlantillasTab({ showToast, agencia }) {
 /* ==========================================
    TAB 3: Plantillas de WhatsApp
    ========================================== */
-

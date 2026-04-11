@@ -256,12 +256,15 @@ export function useMetaSync({ agenciaId, showToast, setConfirmDialog }) {
             if (totalImported > 0) {
                 // Realtime will handle the visual injection automatically
                 if (!silent) showToast(`🔔 ${totalImported} leads nuevos importados desde Meta!`)
-                supabase.functions.invoke('process-drips').catch(e =>
-                    console.warn('[AutoPilot] Could not fire process-drips after sync:', e)
-                )
             } else if (!silent) {
-                showToast(`✅ Todo sincronizado. ${totalSkipped || 0} ya existían en el sistema.`)
+                showToast(`✅ Todo sincronizado. ${totalSkipped || 0} ya existían. Evaluando secuencias pendientes...`)
             }
+
+            // ALWAYS trigger process-drips to clear any stuck backlog 
+            // even if there were 0 new leads imported today.
+            supabase.functions.invoke('process-drips').catch(e =>
+                console.warn('[AutoPilot] Could not fire process-drips after sync:', e)
+            )
         } catch (err) {
             console.error('Meta sync error:', err)
             if (!silent) showToast('Error sincronizando: ' + err.message, 'error')

@@ -81,10 +81,23 @@ export default function MarketingPage() {
     async function loadMetaForms() {
         const { data } = await supabase.from('leads')
             .select('form_name, producto_interes')
+            .eq('agencia_id', agencia.id)
             .or('form_name.not.is.null,producto_interes.not.is.null');
             
         if (data && data.length > 0) {
-            const unique = [...new Set(data.flatMap(d => [d.form_name, d.producto_interes]).filter(n => !!n))].sort();
+            // Normalize: strip date suffixes like "Inka Jungle - 21/02/26" → "Inka Jungle"
+            const stripDateSuffix = (name) => {
+                if (!name) return null
+                return name
+                    .replace(/\s*[-–]\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/i, '')
+                    .replace(/\s*[-–]\s*\d{4}[-/]\d{1,2}([-/]\d{1,2})?\s*$/i, '')
+                    .replace(/\s*[-–]\s*[A-Za-z]+\s+\d{4}\s*$/i, '')
+                    .replace(/\s*\(\d{1,2}\/\d{1,2}\/\d{2,4}\)\s*$/i, '')
+                    .trim()
+            }
+            const unique = [...new Set(
+                data.flatMap(d => [stripDateSuffix(d.form_name), stripDateSuffix(d.producto_interes)]).filter(Boolean)
+            )].sort();
             setMetaForms(unique);
         }
     }
@@ -417,8 +430,14 @@ export default function MarketingPage() {
         })
     }
 
-    const filteredEmail = plantillasEmail.filter(t => t.origen === secuenciaForm.producto_match);
-    const filteredWA = plantillasWA.filter(t => t.origen === secuenciaForm.producto_match);
+    // If producto_match is set, filter templates by matching origen.
+    // If empty (General sequence), show ALL templates so steps can be configured.
+    const filteredEmail = secuenciaForm.producto_match
+        ? plantillasEmail.filter(t => t.origen === secuenciaForm.producto_match || !t.origen)
+        : plantillasEmail;
+    const filteredWA = secuenciaForm.producto_match
+        ? plantillasWA.filter(t => t.origen === secuenciaForm.producto_match || !t.origen)
+        : plantillasWA;
 
     return (
         <>

@@ -118,8 +118,14 @@ function SecuenciaForm({ editingSecuencia, plantillasEmail, plantillasWA, metaFo
     )
     const [saving, setSaving] = useState(false)
 
-    const filteredEmail = plantillasEmail.filter(t => t.origen === form.producto_match)
-    const filteredWA    = plantillasWA.filter(t => t.origen === form.producto_match)
+    // If producto_match is set, filter templates by matching origen.
+    // If empty (General sequence), show ALL templates so steps can be configured.
+    const filteredEmail = form.producto_match
+        ? plantillasEmail.filter(t => t.origen === form.producto_match || !t.origen)
+        : plantillasEmail
+    const filteredWA = form.producto_match
+        ? plantillasWA.filter(t => t.origen === form.producto_match || !t.origen)
+        : plantillasWA
 
     const addPaso = () => {
         const last = pasos.at(-1)

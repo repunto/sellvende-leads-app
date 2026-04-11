@@ -360,13 +360,38 @@ export default function LeadsPage() {
     // ─────────────────────────────────────────────────────
     // LEAD SELECTION (bulk)
     // ─────────────────────────────────────────────────────
-    const toggleSelectLead = useCallback((id) => {
+    const [lastSelectedIndex, setLastSelectedIndex] = useState(null);
+
+    const toggleSelectLead = useCallback((id, isShiftPressed, currentIndex) => {
         setSelectedLeads(prev => {
             const next = new Set(prev)
-            next.has(id) ? next.delete(id) : next.add(id)
+            
+            if (isShiftPressed && lastSelectedIndex !== null) {
+                const start = Math.min(lastSelectedIndex, currentIndex);
+                const end = Math.max(lastSelectedIndex, currentIndex);
+                
+                const rangeLeads = leads.slice(start, end + 1);
+                
+                // Determine if we should select or unselect based on the current lead's state
+                const isCurrentlySelected = prev.has(id);
+                
+                rangeLeads.forEach(l => {
+                    if (l.email && !l.email_rebotado && !l.unsubscribed) {
+                        if (isCurrentlySelected) {
+                            next.delete(l.id); // Shift+Click to unselect range
+                        } else {
+                            next.add(l.id); // Shift+Click to select range
+                        }
+                    }
+                })
+            } else {
+                next.has(id) ? next.delete(id) : next.add(id)
+            }
+            
             return next
         })
-    }, [])
+        setLastSelectedIndex(currentIndex);
+    }, [leads, lastSelectedIndex])
 
     // toggleSelectAll selects ALL valid leads across ALL pages using the server RPC
     const [cargandoSeleccionMassiva, setCargandoSeleccionMassiva] = useState(false);
@@ -438,15 +463,54 @@ export default function LeadsPage() {
     // ─────────────────────────────────────────────────────
     const handleKanbanDrop = useCallback(async (newEstado) => {
         if (!draggedLeadId) return
-        try {
-            await supabase.from('leads').update({ estado: newEstado }).eq('id', draggedLeadId)
-            setLeads(prev => prev.map(l => l.id === draggedLeadId ? { ...l, estado: newEstado } : l))
-            showToast(`Lead movido a "${newEstado}"`)
-        } catch (err) {
-            showToast('Error: ' + err.message, 'error')
+        
+        const draggedLead = leads.find(l => l.id === draggedLeadId)
+        if (!draggedLead) {
+            setDraggedLeadId(null)
+            return
         }
+
+        const proceedWithDrop = async () => {
+            try {
+                let updates = { estado: newEstado }
+
+                // Calcular Speed-to-lead si pasa de nuevo a contactado
+                if (newEstado === 'contactado' && draggedLead.estado === 'nuevo') {
+                    updates.responded_at = new Date().toISOString()
+                    const diffMs = new Date() - new Date(draggedLead.created_at)
+                    updates.time_to_respond_mins = Math.max(0, Math.floor(diffMs / 60000))
+                    
+                    if (!draggedLead.ultimo_contacto) {
+                        updates.ultimo_contacto = new Date().toISOString()
+                    }
+                }
+
+                await supabase.from('leads').update(updates).eq('id', draggedLead.id)
+                setLeads(prev => prev.map(l => l.id === draggedLead.id ? { ...l, ...updates } : l))
+                showToast(`Lead movido a "${newEstado}"`)
+            } catch (err) {
+                showToast('Error: ' + err.message, 'error')
+            }
+        }
+
+        if (newEstado === 'contactado' && draggedLead.estado === 'nuevo' && !draggedLead.ultimo_contacto) {
+            setConfirmDialog({
+                title: '🛑 Validación de Contacto',
+                message: 'Este lead no registra ningún email automático ni chat de WhatsApp. Por favor, asegúrate de haberle hablado primero para no reportar una conversión ficticia al Píxel de Meta.\n\n¿Deseas marcarlo como contactado manualmente asumiendo la responsabilidad?',
+                danger: false,
+                confirmLabel: 'Confirmar Contacto Manual',
+                onConfirm: async () => {
+                    setConfirmDialog(null)
+                    await proceedWithDrop()
+                }
+            })
+            setDraggedLeadId(null)
+            return
+        }
+
+        await proceedWithDrop()
         setDraggedLeadId(null)
-    }, [draggedLeadId, setLeads, showToast])
+    }, [draggedLeadId, leads, setLeads, showToast, setConfirmDialog])
 
     // ─────────────────────────────────────────────────────
     // WHATSAPP

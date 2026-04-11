@@ -56,7 +56,7 @@ Después de crear el endpoint:
 ## Paso 4: Agregar el Secret en Supabase
 
 1. Ve a **[supabase.com/dashboard](https://supabase.com/dashboard)**
-2. Selecciona el proyecto **QuipuReservas** (`dtloiqfkeasfcxiwlvzp`)
+2. Selecciona el proyecto **Sellvende Leads** (`dtloiqfkeasfcxiwlvzp`)
 3. En el menú lateral ve a **Edge Functions**
 4. Haz clic en **Secrets** (o **Manage secrets**)
 5. Agrega el secreto:

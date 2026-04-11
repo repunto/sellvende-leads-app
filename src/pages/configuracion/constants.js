@@ -1,5 +1,6 @@
 export const TABS = [
     { id: 'agencia', label: '🏢 Datos de Agencia', icon: '🏢' },
+    { id: 'integraciones', label: '🔌 Integraciones Ads', icon: '🔌' },
     { id: 'plantillas', label: '✉️ Plantillas Email', icon: '✉️' },
     { id: 'whatsapp', label: '📲 Plantillas WhatsApp', icon: '📲' },
     { id: 'backup', label: '☁️ Copias de Seguridad', icon: '☁️' },

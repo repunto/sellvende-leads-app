@@ -2,16 +2,64 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 
-// ── Sub-component: Email timeline with expandable HTML preview ──
-function EmailTimeline({ detailEmails }) {
+// ── Sub-component: Unified Timeline (Emails + System Events) ──
+function UnifiedTimeline({ detailLead, detailEmails }) {
     const [expanded, setExpanded] = useState(null)
 
-    if (!detailEmails || detailEmails.length === 0) {
+    // Build timeline events
+    const events = []
+
+    // 1. Ingreso de Lead
+    if (detailLead) {
+        events.push({
+            id: 'evt-created',
+            created_at: detailLead.created_at,
+            tipo: 'sistema',
+            asunto: `Lead ingresó al CRM`,
+            estado: 'info',
+            bodyText: `Origen: ${detailLead.origen || 'Desconocido'} • Campaña: ${detailLead.utm_campaign || detailLead.form_name || 'Desconocido'}`,
+            color: '#3b82f6',
+            textColor: '#1d4ed8'
+        })
+
+        // 2. Primer Contacto / Contactado Manual (si existe record de ultimo_contacto)
+        if (detailLead.ultimo_contacto) {
+            // Check if there's an email VERY close to this time to avoid duplicates
+            const hasOverlappingEmail = (detailEmails || []).some(e => Math.abs(new Date(e.created_at) - new Date(detailLead.ultimo_contacto)) < 10000)
+            if (!hasOverlappingEmail) {
+                events.push({
+                    id: 'evt-contactado',
+                    created_at: detailLead.ultimo_contacto,
+                    tipo: 'sistema',
+                    asunto: `Lead marcado como Contactado`,
+                    estado: 'info',
+                    bodyText: 'Actualizado vía WhatsApp, o mediante registro manual en Kanban',
+                    color: '#eab308',
+                    textColor: '#b45309'
+                })
+            }
+        }
+    }
+
+    // 3. Emails
+    if (detailEmails) {
+        detailEmails.forEach(log => {
+            events.push({
+                ...log,
+                isEmail: true
+            })
+        })
+    }
+
+    // Sort by date DESC
+    events.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+    if (events.length === 0) {
         return (
             <div>
-                <h3 style={{ fontSize: '1rem', marginBottom: 16 }}>📜 Historial de Correos (Timeline)</h3>
+                <h3 style={{ fontSize: '1rem', marginBottom: 16 }}>📜 Historial de Actividades</h3>
                 <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', fontStyle: 'italic', padding: 16, background: 'var(--color-bg-hover)', borderRadius: 8, textAlign: 'center' }}>
-                    No hay correos enviados a este lead aún.
+                    No hay actividad registrada aún.
                 </div>
             </div>
         )
@@ -19,78 +67,97 @@ function EmailTimeline({ detailEmails }) {
 
     return (
         <div>
-            <h3 style={{ fontSize: '1rem', marginBottom: 16 }}>📜 Historial de Correos (Timeline)</h3>
+            <h3 style={{ fontSize: '1rem', marginBottom: 16 }}>📜 Historial de Actividades</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {detailEmails.map(log => {
-                    const isExpanded = expanded === log.id
-                    const hasHtml = !!(log.cuerpo && log.cuerpo.trim().length > 10)
-                    const bodyText = hasHtml
-                        ? log.cuerpo.replace(/<[^>]*>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180)
-                        : null
+                {events.map((evt) => {
+                    if (evt.isEmail) {
+                        const log = evt
+                        const isExpanded = expanded === log.id
+                        const hasHtml = !!(log.cuerpo && log.cuerpo.trim().length > 10)
+                        const bodyText = hasHtml
+                            ? log.cuerpo.replace(/<[^>]*>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180)
+                            : null
 
+                        return (
+                            <div key={log.id} style={{
+                                position: 'relative', paddingLeft: 20,
+                                borderLeft: '2px solid var(--color-border)', paddingBottom: 16
+                            }}>
+                                <div style={{
+                                    position: 'absolute', left: -7, top: 0, width: 12, height: 12, borderRadius: '50%',
+                                    background: log.estado === 'enviado' ? '#10b981' : log.estado === 'fallido' ? '#ef4444' : '#f59e0b',
+                                    border: '2px solid var(--color-bg)'
+                                }} />
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>
+                                    {new Date(log.created_at).toLocaleString('es-PE')} •{' '}
+                                    {log.tipo === 'secuencia' ? '🤖 Email Automático' : '👤 Email Manual'}
+                                    {' • '}
+                                    <span style={{
+                                        color: log.estado === 'enviado' ? '#10b981' : '#ef4444',
+                                        fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem'
+                                    }}>{log.estado}</span>
+                                </div>
+                                <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)', marginBottom: 6 }}>
+                                    {log.asunto || '(sin asunto)'}
+                                </div>
+                                {hasHtml ? (
+                                    <div>
+                                        {!isExpanded && (
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', background: 'var(--color-bg-hover)', padding: '8px 10px', borderRadius: 6, lineHeight: 1.4, marginBottom: 6 }}>
+                                                {bodyText}…
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={() => setExpanded(isExpanded ? null : log.id)}
+                                            style={{
+                                                background: 'transparent', border: '1px solid var(--color-border)',
+                                                color: 'var(--color-primary)', fontSize: '0.75rem', padding: '3px 10px',
+                                                borderRadius: 6, cursor: 'pointer', marginBottom: isExpanded ? 8 : 0
+                                            }}
+                                        >
+                                            {isExpanded ? '▲ Ocultar preview' : '👁 Ver correo completo'}
+                                        </button>
+                                        {isExpanded && (
+                                            <iframe
+                                                srcDoc={log.cuerpo}
+                                                style={{
+                                                    width: '100%', height: 420, border: '1px solid var(--color-border)',
+                                                    borderRadius: 8, background: '#fff'
+                                                }}
+                                                sandbox="allow-same-origin"
+                                                title="Preview del correo enviado"
+                                            />
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '6px 10px', background: 'var(--color-bg-hover)', borderRadius: 6 }}>
+                                        ⚠️ Este registro no tiene preview
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    }
+
+                    // System events
                     return (
-                        <div key={log.id} style={{
+                        <div key={evt.id} style={{
                             position: 'relative', paddingLeft: 20,
                             borderLeft: '2px solid var(--color-border)', paddingBottom: 16
                         }}>
-                            {/* Timeline dot */}
                             <div style={{
                                 position: 'absolute', left: -7, top: 0, width: 12, height: 12, borderRadius: '50%',
-                                background: log.estado === 'enviado' ? '#10b981' : log.estado === 'fallido' ? '#ef4444' : '#f59e0b',
+                                background: evt.color,
                                 border: '2px solid var(--color-bg)'
                             }} />
-
-                            {/* Date + type */}
                             <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>
-                                {new Date(log.created_at).toLocaleString('es-PE')} •{' '}
-                                {log.tipo === 'secuencia' ? '🤖 Automático' : '👤 Manual'}
-                                {' • '}
-                                <span style={{
-                                    color: log.estado === 'enviado' ? '#10b981' : '#ef4444',
-                                    fontWeight: 600, textTransform: 'uppercase', fontSize: '0.7rem'
-                                }}>{log.estado}</span>
+                                {new Date(evt.created_at).toLocaleString('es-PE')} • ⚙️ Evento Sistema
                             </div>
-
-                            {/* Subject */}
                             <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)', marginBottom: 6 }}>
-                                {log.asunto || '(sin asunto)'}
+                                {evt.asunto}
                             </div>
-
-                            {/* Body preview + toggle */}
-                            {hasHtml ? (
-                                <div>
-                                    {!isExpanded && (
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', background: 'var(--color-bg-hover)', padding: '8px 10px', borderRadius: 6, lineHeight: 1.4, marginBottom: 6 }}>
-                                            {bodyText}…
-                                        </div>
-                                    )}
-                                    <button
-                                        onClick={() => setExpanded(isExpanded ? null : log.id)}
-                                        style={{
-                                            background: 'transparent', border: '1px solid var(--color-border)',
-                                            color: 'var(--color-primary)', fontSize: '0.75rem', padding: '3px 10px',
-                                            borderRadius: 6, cursor: 'pointer', marginBottom: isExpanded ? 8 : 0
-                                        }}
-                                    >
-                                        {isExpanded ? '▲ Ocultar preview' : '👁 Ver correo completo'}
-                                    </button>
-                                    {isExpanded && (
-                                        <iframe
-                                            srcDoc={log.cuerpo}
-                                            style={{
-                                                width: '100%', height: 420, border: '1px solid var(--color-border)',
-                                                borderRadius: 8, background: '#fff'
-                                            }}
-                                            sandbox="allow-same-origin"
-                                            title="Preview del correo enviado"
-                                        />
-                                    )}
-                                </div>
-                            ) : (
-                                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '6px 10px', background: 'var(--color-bg-hover)', borderRadius: 6 }}>
-                                    ⚠️ Este registro no tiene preview (enviado antes de la actualización)
-                                </div>
-                            )}
+                            <div style={{ fontSize: '0.8rem', color: evt.textColor || 'var(--color-text-secondary)', background: evt.color + '15', padding: '8px 10px', borderRadius: 6, lineHeight: 1.4, marginBottom: 6, border: `1px solid ${evt.color}30` }}>
+                                {evt.bodyText}
+                            </div>
                         </div>
                     )
                 })}
@@ -244,8 +311,8 @@ export default function LeadDetailPanel({
                         </div>
                     )}
 
-                {/* Score + Producto cards */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+                    {/* Score + Producto cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                         <div style={{ background: 'var(--color-bg-hover)', padding: 16, borderRadius: 12, border: '1px solid var(--color-border)' }}>
                             <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>Score del Lead</div>
                             <div style={{ fontSize: '1.2rem', fontWeight: 700, color: scoreData.color, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -256,6 +323,31 @@ export default function LeadDetailPanel({
                             <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: 4 }}>Producto Cotizado</div>
                             <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text)' }}>
                                 {detailLead.producto_interes || 'No especificado'}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ── Tracking / UTMs ── */}
+                    <div style={{ background: 'var(--color-bg-hover)', padding: 16, borderRadius: 12, border: '1px solid var(--color-border)', marginBottom: 24 }}>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--color-text)', marginBottom: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            📍 Atribución de Campaña
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: '0.85rem' }}>
+                            <div style={{display: 'flex', flexDirection: 'column'}}>
+                                <span style={{color: 'var(--color-text-muted)', fontSize: '0.75rem'}}>Campaña</span>
+                                <span style={{fontWeight: 500}}>{detailLead.utm_campaign || detailLead.campaign_name || 'Desconocido'}</span>
+                            </div>
+                            <div style={{display: 'flex', flexDirection: 'column'}}>
+                                <span style={{color: 'var(--color-text-muted)', fontSize: '0.75rem'}}>Origen de Datos</span>
+                                <span style={{fontWeight: 500}}>{detailLead.origen || 'Orgánico'}</span>
+                            </div>
+                            <div style={{display: 'flex', flexDirection: 'column'}}>
+                                <span style={{color: 'var(--color-text-muted)', fontSize: '0.75rem'}}>UTM Source</span>
+                                <span style={{fontWeight: 500}}>{detailLead.utm_source || 'N/A'}</span>
+                            </div>
+                            <div style={{display: 'flex', flexDirection: 'column'}}>
+                                <span style={{color: 'var(--color-text-muted)', fontSize: '0.75rem'}}>UTM Medium</span>
+                                <span style={{fontWeight: 500}}>{detailLead.utm_medium || 'N/A'}</span>
                             </div>
                         </div>
                     </div>
@@ -355,7 +447,7 @@ export default function LeadDetailPanel({
                     )}
 
                     {/* ── Email History (Timeline) ── */}
-                    <EmailTimeline detailEmails={detailEmails} />
+                    <UnifiedTimeline detailLead={detailLead} detailEmails={detailEmails} />
                 </div>
 
                 {/* ── Footer — Editar + Ventar + Bounce Toggle ── */}
@@ -377,9 +469,9 @@ export default function LeadDetailPanel({
                             }}
                             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.07)' }}
                             onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-                            title="Útil para Gmail: marca este email como inválido y cancela sus secuencias activas"
+                            title="Usa esto si recibiste una alerta de que este correo no existe. Detendrá todas las secuencias automáticas."
                         >
-                            {bounceLoading ? '⏳ Actualizando...' : '⚠️ Marcar email como rebotado (Gmail / Manual)'}
+                            {bounceLoading ? '⏳ Actualizando...' : '🛑 Reportar dirección de correo falsa o inválida'}
                         </button>
                     )}
                 </div>

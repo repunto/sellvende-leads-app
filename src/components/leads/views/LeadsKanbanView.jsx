@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import OrigenBadge from '../OrigenBadge'
 import ScoreBadge from '../ScoreBadge'
@@ -14,6 +14,13 @@ export default function LeadsKanbanView({
     handleWhatsAppClick,
     openForm
 }) {
+    const [now, setNow] = useState(new Date())
+
+    useEffect(() => {
+        const interval = setInterval(() => setNow(new Date()), 60000)
+        return () => clearInterval(interval)
+    }, [])
+
     return (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, minHeight: 400 }}>
             {KANBAN_COLS.map(col => {
@@ -37,20 +44,45 @@ export default function LeadsKanbanView({
                             }}>{colLeads.length}</span>
                         </div>
                         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 500 }}>
-                            {colLeads.map(lead => (
+                            {colLeads.map(lead => {
+                                let isUrgent = false
+                                let waitMins = 0
+                                if (col.estado === 'nuevo' && lead.created_at) {
+                                    waitMins = Math.max(0, Math.floor((now - new Date(lead.created_at)) / 60000))
+                                    if (waitMins >= 5) {
+                                        isUrgent = true
+                                    }
+                                }
+
+                                return (
                                 <div key={lead.id}
                                     draggable
                                     onDragStart={() => setDraggedLeadId(lead.id)}
-                                    className={lead._isNew ? 'lead-new-flash' : ''}
+                                    className={lead._isNew ? 'lead-new-flash' : isUrgent ? 'lead-urgent-flash' : ''}
                                     style={{
-                                        background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+                                        background: isUrgent ? 'var(--color-bg-card)' : 'var(--color-bg)', 
+                                        border: isUrgent ? '1px solid #ef444480' : '1px solid var(--color-border)',
                                         borderRadius: 8, padding: '8px 10px', cursor: 'grab',
-                                        borderLeft: `3px solid ${col.color}`, fontSize: '0.82rem'
+                                        borderLeft: isUrgent ? `4px solid #ef4444` : `3px solid ${col.color}`, 
+                                        boxShadow: isUrgent ? '0 0 8px rgba(239, 68, 68, 0.4)' : 'none',
+                                        fontSize: '0.82rem'
                                     }}>
                                     <div style={{ fontWeight: 600, marginBottom: 3, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                                         <span onClick={() => openDetailPanel(lead)} style={{ cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>
                                             {lead.nombre}
                                         </span>
+                                        {col.estado === 'nuevo' && waitMins > 0 && (
+                                            <span title="Tiempo esperando respuesta" style={{ 
+                                                fontSize: '0.65rem', 
+                                                padding: '1px 5px', 
+                                                borderRadius: 10, 
+                                                background: isUrgent ? '#ef444420' : 'var(--color-bg-hover)',
+                                                color: isUrgent ? '#ef4444' : 'var(--color-text-secondary)',
+                                                fontWeight: 800
+                                            }}>
+                                                ⏱️ {waitMins}m
+                                            </span>
+                                        )}
                                         {lead.email_rebotado && (
                                             <span
                                                 title={`Email rebotado — excluido de envíos${lead.motivo_rebote ? '\nMotivo: ' + lead.motivo_rebote : ''}`}
@@ -88,7 +120,7 @@ export default function LeadsKanbanView({
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                            )})}
                             {colLeads.length === 0 && (
                                 <div style={{ padding: 20, textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '0.78rem', opacity: 0.6 }}>
                                     Arrastra leads aquí

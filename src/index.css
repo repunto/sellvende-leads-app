@@ -524,7 +524,7 @@ a:hover {
   color: var(--color-accent);
 }
 
-.badge-reservado,
+.badge-ventado,
 .badge-confirmada {
   background: var(--color-success-soft);
   color: var(--color-success);
@@ -1584,6 +1584,15 @@ a:hover {
   }
 }
 
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
 @keyframes toastSlideIn {
   from {
     opacity: 0;
@@ -1776,6 +1785,16 @@ tr:focus-within td {
 /* Applied to table rows injected by Realtime */
 tr.lead-new-flash {
   animation: newLeadFlash 3s ease forwards;
+}
+
+@keyframes urgentFlash {
+  0%   { border-color: rgba(239, 68, 68, 0.8); background-color: rgba(239, 68, 68, 0.15); box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+  50%  { border-color: var(--color-border); background-color: var(--color-bg); box-shadow: none; }
+  100% { border-color: rgba(239, 68, 68, 0.8); background-color: rgba(239, 68, 68, 0.15); box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+}
+
+.lead-urgent-flash {
+  animation: urgentFlash 2.5s infinite ease-in-out;
 }
 
 /* ==========================================

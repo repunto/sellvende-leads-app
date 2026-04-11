@@ -70,10 +70,25 @@ export function useMarketingData() {
         const { data } = await supabase
             .from('leads')
             .select('form_name, producto_interes')
+            .eq('agencia_id', agencia.id)
             .or('form_name.not.is.null,producto_interes.not.is.null')
         if (data?.length > 0) {
+            // Normalize: strip date suffixes like "Inka Jungle - 21/02/26" → "Inka Jungle"
+            // This mirrors what meta-webhook does: formData.name.split('-')[0].trim()
+            const stripDateSuffix = (name) => {
+                if (!name) return null
+                return name
+                    .replace(/\s*[-–]\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/i, '')
+                    .replace(/\s*[-–]\s*\d{4}[-/]\d{1,2}([-/]\d{1,2})?\s*$/i, '')
+                    .replace(/\s*[-–]\s*[A-Za-z]+\s+\d{4}\s*$/i, '')
+                    .replace(/\s*\(\d{1,2}\/\d{1,2}\/\d{2,4}\)\s*$/i, '')
+                    .trim()
+            }
             const unique = [...new Set(
-                data.flatMap(d => [d.form_name, d.producto_interes]).filter(Boolean)
+                data.flatMap(d => [
+                    stripDateSuffix(d.form_name),
+                    stripDateSuffix(d.producto_interes)
+                ]).filter(Boolean)
             )].sort()
             setMetaForms(unique)
         }

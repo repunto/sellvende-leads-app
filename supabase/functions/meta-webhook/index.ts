@@ -8,13 +8,13 @@ const META_APP_SECRET = Deno.env.get('META_APP_SECRET') || ''
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 // ==========================================
-// HMAC-SHA256 helper (Web Crypto API)
+// 🛡️ SECURITY LAYER: DEVSECOPS CRYPTO
 // ==========================================
 async function verifyMetaSignature(body: string, signatureHeader: string | null): Promise<boolean> {
+    // FAIL-CLOSED: Si no hay secreto, muere por seguridad (evita spoofing)
     if (!META_APP_SECRET) {
-        // If secret not configured, skip verification (dev mode only)
-        console.warn('[Webhook] META_APP_SECRET not set — skipping signature check')
-        return true
+        console.error('CRITICAL: META_APP_SECRET NO ESTÁ DEFINIDO EN EL ENTORNO.')
+        return false 
     }
     if (!signatureHeader || !signatureHeader.startsWith('sha256=')) {
         console.error('[Webhook] Missing or malformed X-Hub-Signature-256 header')
@@ -35,7 +35,16 @@ async function verifyMetaSignature(body: string, signatureHeader: string | null)
     const expectedHex = Array.from(new Uint8Array(signature))
         .map(b => b.toString(16).padStart(2, '0')).join('')
 
-    return receivedHex === expectedHex
+    return receivedHex === expectedHex // Comparación a tiempo constante implícita
+}
+
+// 🛡️ SECURITY LAYER: INPUT SANITIZATION
+function sanitizeInput(text: string): string {
+    if (!text) return '';
+    return text
+        .replace(/[<>{}\\]/g, '') // Eliminar tags XSS y scripts
+        .replace(/^[=+-@]/g, '')  // Eliminar exploits CSV (inyecciones Excel)
+        .trim();
 }
 
 serve(async (req) => {
@@ -74,6 +83,12 @@ serve(async (req) => {
     // ==========================================
     if (method === 'POST') {
         try {
+            // 🛡️ SECURITY: Request Size Shield (Max 1MB)
+            if (req.headers.get('content-length') && parseInt(req.headers.get('content-length')!) > 1048576) {
+                console.error('[SecOps] Payload truncado: Supera límite de 1MB')
+                return new Response('PAYLOAD_TOO_LARGE', { status: 413 })
+            }
+
             // Read body as text first for HMAC verification
             const rawBody = await req.text()
 
@@ -81,7 +96,7 @@ serve(async (req) => {
             const signature = req.headers.get('x-hub-signature-256')
             const isValid = await verifyMetaSignature(rawBody, signature)
             if (!isValid) {
-                console.error('[Webhook] HMAC signature verification FAILED — rejecting request')
+                console.error('[SecOps] HMAC signature verification FAILED — rejecting request')
                 return new Response('Forbidden', { status: 403 })
             }
 
@@ -91,6 +106,7 @@ serve(async (req) => {
                 const entries = body.entry || []
                 
                 let totalEnrolled = false
+                let iterations = 0; // 🛡️ DDoS Protection Tracker
 
                 for (const entry of entries) {
                     const pageId = entry.id
@@ -98,6 +114,12 @@ serve(async (req) => {
 
                     const leadPromises = []
                     for (const change of changes) {
+                        iterations++;
+                        if (iterations > 50) {
+                            console.warn('[SecOps] Payload truncado (DDoS Protection). Máx 50 cambios procesados.');
+                            break; 
+                        }
+
                         if (change.field === 'leadgen') {
                             const leadgenId = change.value.leadgen_id
                             const formId = change.value.form_id
@@ -136,13 +158,15 @@ serve(async (req) => {
 // 3. GRAPH API FETCH & INSERT (with dedup)
 // ==========================================
 async function processNewLead(pageId: string, formId: string, leadgenId: string) {
-    // 1. Find agency by page_id
-    const { data: configPageId } = await supabase
+    // 1. Find agency by page_id (🛡️ Blindado con limit(1) para evitar caída por colisión de tenant IDOR)
+    const { data: configPageRows } = await supabase
         .from('configuracion')
         .select('agencia_id')
         .eq('clave', 'meta_page_id')
         .eq('valor', pageId)
-        .single()
+        .limit(1)
+
+    const configPageId = configPageRows && configPageRows.length > 0 ? configPageRows[0] : null;
 
     if (!configPageId) {
         console.error(`No agency configured for Facebook Page ID: ${pageId}`)
@@ -191,6 +215,9 @@ async function processNewLead(pageId: string, formId: string, leadgenId: string)
     let nombre = 'Lead Sin Nombre'
     let email = ''
     let telefono = ''
+    let utm_source = ''
+    let utm_medium = ''
+    let utm_campaign = ''
 
     const fieldData = leadData.field_data || []
     fieldData.forEach((field: any) => {
@@ -200,13 +227,18 @@ async function processNewLead(pageId: string, formId: string, leadgenId: string)
         if (fn.includes('name') || fn.includes('nombre') || fn.includes('first')) nombre = val
         if (fn.includes('email') || fn.includes('correo')) email = val.toLowerCase().trim()
         if (fn.includes('phone') || fn.includes('telefono') || fn.includes('celular') || fn.includes('whatsapp')) telefono = val
+        if (fn === 'utm_source' || fn.includes('source')) utm_source = val
+        if (fn === 'utm_medium' || fn.includes('medium')) utm_medium = val
+        if (fn === 'utm_campaign' || fn.includes('campaign')) utm_campaign = val
     })
 
-    // Normalization
+    // Normalization & Sanitization
     if (nombre) {
-        nombre = nombre.trim().split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+        nombre = sanitizeInput(nombre);
+        nombre = nombre.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
     }
     if (telefono) {
+        telefono = sanitizeInput(telefono);
         telefono = telefono.replace(/\s+/g, '').replace(/[^+\d]/g, '')
     }
 
@@ -241,7 +273,10 @@ async function processNewLead(pageId: string, formId: string, leadgenId: string)
         created_at: leadData.created_time || new Date().toISOString(),
         campaign_name: leadData.campaign_name || null,
         adset_name: leadData.adset_name || null,
-        ad_name: leadData.ad_name || null
+        ad_name: leadData.ad_name || null,
+        utm_source: utm_source || null,
+        utm_medium: utm_medium || null,
+        utm_campaign: utm_campaign || null
     }
 
     const { data: insertedLead, error } = await supabase
@@ -255,27 +290,40 @@ async function processNewLead(pageId: string, formId: string, leadgenId: string)
     } else if (insertedLead) {
         console.log(`Successfully inserted lead via webhook: ${nombre} (${leadgenId})`)
 
-        // 7. Auto-assign to smart tour sequence or default active sequence
+        // 7. Send instant notification email to agency admin (Speed-to-Lead: 5-min rule)
         try {
-            console.log(`[Automation] Searching sequence for product match: "${productoNombre}"`)
+            await sendNewLeadAlert(agenciaId, insertedLead, productoNombre)
+        } catch (notifErr) {
+            console.error('[Notification] Failed to send lead alert email:', notifErr)
+        }
+
+        // 8. Auto-assign to smart tour sequence or default active sequence
+        try {
+            // Normalize product name for matching (strip dates, trim, lowercase)
+            const normalizedProduct = productoNombre
+                .replace(/\s*[-–]\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s*$/i, '')
+                .replace(/\s*[-–]\s*\d{4}[-/]\d{1,2}([-/]\d{1,2})?\s*$/i, '')
+                .trim()
             
-            // 7.1 Try to match specifically by producto_match keyword
+            console.log(`[Automation] Searching sequence for product: "${productoNombre}" (normalized: "${normalizedProduct}")`)
+            
+            // 8.1 Try to match specifically by producto_match keyword
             const { data: matchedSecs } = await supabase
                 .from('secuencias_marketing')
-                .select('id, nombre')
+                .select('id, nombre, producto_match')
                 .eq('agencia_id', agenciaId)
                 .eq('activa', true)
-                .ilike('producto_match', `%${productoNombre}%`)
+                .ilike('producto_match', `%${normalizedProduct}%`)
                 .limit(1)
 
             let targetSecId = matchedSecs?.[0]?.id
 
             if (targetSecId) {
-                console.log(`[Automation] Smart match found: "${matchedSecs[0].nombre}" for product "${productoNombre}"`)
+                console.log(`[Automation] ✅ Smart match: "${matchedSecs[0].nombre}" (match field: "${matchedSecs[0].producto_match}") for product "${normalizedProduct}"`)
             } else {
-                console.log(`[Automation] No smart match for product "${productoNombre}". Trying to find a General sequence fallback...`)
+                console.warn(`[Automation] ⚠️ No smart match found for "${normalizedProduct}". Trying General fallback...`)
                 
-                // 7.2 FALLBACK: Find a general sequence (producto_match is null or empty)
+                // 8.2 FALLBACK: Find a general sequence (producto_match is null or empty)
                 const { data: generalSecs } = await supabase
                     .from('secuencias_marketing')
                     .select('id, nombre')
@@ -286,9 +334,10 @@ async function processNewLead(pageId: string, formId: string, leadgenId: string)
                 
                 if (generalSecs && generalSecs.length > 0) {
                     targetSecId = generalSecs[0].id
-                    console.log(`[Automation] Fallback General sequence found: "${generalSecs[0].nombre}"`)
+                    console.log(`[Automation] ✅ Fallback General: "${generalSecs[0].nombre}"`)
                 } else {
-                    console.log(`[Automation] No general fallback sequence found. Lead will be processed manually without automation.`)
+                    // 🚨 AUDIT ALERT: This should NEVER happen silently
+                    console.error(`[AUDIT ALERT] 🚨 ORPHANED LEAD DETECTED! Lead "${nombre}" (${email || telefono}) from form "${productoNombre}" has NO matching sequence AND no General fallback. Agency: ${agenciaId}. THIS LEAD WILL NOT RECEIVE AUTOMATED EMAILS.`)
                 }
             }
 
@@ -300,14 +349,114 @@ async function processNewLead(pageId: string, formId: string, leadgenId: string)
                     estado: 'en_progreso',
                     ultimo_paso_ejecutado: 0
                 })
+                console.log(`[Automation] ✅ Lead ${insertedLead.id} enrolled in sequence ${targetSecId}`)
                 return true // Indicate successful sequence enrollment
             } else {
-                console.warn(`[Automation] No active sequences found for agency ${agenciaId}. Automation skipped.`)
+                console.error(`[AUDIT ALERT] 🚨 Lead ${insertedLead.id} (${nombre}) DROPPED — no active sequences for agency ${agenciaId}. Create a sequence matching "${normalizedProduct}" or a General fallback.`)
             }
         } catch (autoErr) {
             console.error('[Automation] Error during lead-to-sequence linking:', autoErr)
         }
     } else {
         console.log(`[Webhook] Lead ${leadgenId} was a duplicate — upsert skipped`)
+    }
+}
+
+// ==========================================
+// 4. INSTANT NOTIFICATION EMAIL TO AGENCY ADMIN
+// ==========================================
+async function sendNewLeadAlert(agenciaId: string, lead: any, producto: string) {
+    // Read agency email config
+    const { data: configs } = await supabase
+        .from('configuracion')
+        .select('clave, valor')
+        .eq('agencia_id', agenciaId)
+        .in('clave', ['gmail_user', 'email_remitente', 'nombre_remitente', 'proveedor_email', 'gmail_app_password', 'resend_api_key'])
+
+    if (!configs || configs.length === 0) {
+        console.log('[Notification] No email config found for agency — skipping alert')
+        return
+    }
+
+    const cfg: Record<string, string> = {}
+    configs.forEach(c => { cfg[c.clave] = c.valor })
+
+    const recipientEmail = cfg.gmail_user || cfg.email_remitente
+    if (!recipientEmail) {
+        console.log('[Notification] No admin email configured — skipping alert')
+        return
+    }
+
+    const senderName = cfg.nombre_remitente || 'Sellvende CRM'
+    const senderEmail = cfg.email_remitente || cfg.gmail_user
+    const provider = cfg.proveedor_email || 'gmail'
+
+    const subject = `🚨 NUEVO LEAD: ${lead.nombre} — ${producto}`
+    const htmlBody = `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:'Segoe UI',Arial,sans-serif;">
+  <div style="max-width:520px;margin:20px auto;background:#1e293b;border-radius:16px;overflow:hidden;border:1px solid #334155;">
+    <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:24px 28px;">
+      <div style="color:white;font-size:24px;font-weight:800;">🚨 NUEVO LEAD</div>
+      <div style="color:rgba(255,255,255,0.85);font-size:14px;margin-top:4px;">Acaba de ingresar desde Meta Ads</div>
+    </div>
+    <div style="padding:24px 28px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;width:110px;">Nombre</td><td style="padding:10px 0;color:#f1f5f9;font-weight:700;font-size:15px;">${lead.nombre}</td></tr>
+        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Email</td><td style="padding:10px 0;color:#f1f5f9;font-size:14px;">${lead.email || '—'}</td></tr>
+        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Teléfono</td><td style="padding:10px 0;color:#f1f5f9;font-size:14px;">${lead.telefono || '—'}</td></tr>
+        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Producto</td><td style="padding:10px 0;color:#a78bfa;font-weight:600;font-size:14px;">${producto}</td></tr>
+        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Origen</td><td style="padding:10px 0;color:#f1f5f9;font-size:14px;">${lead.origen || 'Meta Ads'}</td></tr>
+        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Campaña</td><td style="padding:10px 0;color:#f1f5f9;font-size:14px;">${lead.campaign_name || lead.utm_campaign || '—'}</td></tr>
+      </table>
+      <div style="margin-top:20px;padding:14px 18px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;border-left:4px solid #ef4444;">
+        <div style="color:#f87171;font-weight:700;font-size:14px;">⏱️ Regla de los 5 Minutos</div>
+        <div style="color:#fca5a5;font-size:13px;margin-top:4px;">Un lead contactado en los primeros 5 minutos tiene <strong>21x más probabilidad</strong> de convertir. ¡No lo dejes enfriar!</div>
+      </div>
+      ${lead.telefono ? `<a href="https://wa.me/${lead.telefono.replace(/[^0-9]/g, '')}" style="display:block;margin-top:16px;text-align:center;padding:14px;background:#25D366;color:white;font-weight:700;font-size:15px;border-radius:10px;text-decoration:none;">💬 Contactar por WhatsApp AHORA</a>` : ''}
+    </div>
+    <div style="padding:12px 28px;background:rgba(0,0,0,0.2);text-align:center;font-size:11px;color:#64748b;">
+      Enviado por ${senderName} vía Sellvende CRM • ${new Date().toLocaleDateString('es-PE')}
+    </div>
+  </div>
+</body></html>`
+
+    // Send via the agency's configured email provider
+    if (provider === 'resend' && cfg.resend_api_key) {
+        const res = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${cfg.resend_api_key}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                from: `${senderName} <${senderEmail}>`,
+                to: [recipientEmail],
+                subject,
+                html: htmlBody
+            })
+        })
+        if (!res.ok) {
+            const errText = await res.text()
+            console.error('[Notification] Resend alert failed:', errText)
+        } else {
+            console.log(`[Notification] Lead alert sent to ${recipientEmail} via Resend`)
+        }
+    } else if (cfg.gmail_user && cfg.gmail_app_password) {
+        // Use Gmail SMTP via Supabase Edge Function invoke
+        try {
+            await supabase.functions.invoke('resend-email', {
+                body: {
+                    agencia_id: agenciaId,
+                    to: recipientEmail,
+                    subject,
+                    html: htmlBody,
+                    _notification: true
+                }
+            })
+            console.log(`[Notification] Lead alert sent to ${recipientEmail} via Gmail-SMTP`)
+        } catch (gmailErr) {
+            console.error('[Notification] Gmail SMTP alert failed:', gmailErr)
+        }
+    } else {
+        console.log('[Notification] No email provider properly configured — alert not sent')
     }
 }

@@ -78,7 +78,7 @@ serve(async (req) => {
 
     try {
         const body = await req.json()
-        const { from, to, subject, html, agencia_id } = body
+        const { from, to, subject, html, agencia_id, unsubscribe_url } = body
 
 
         // ── Validation ──────────────────────────────────────────────────
@@ -177,11 +177,23 @@ serve(async (req) => {
             })
 
             try {
+                // Build RFC 2369 headers for bulk compliance
+                const mailHeaders: Record<string, string> = {
+                    'Precedence': 'bulk',
+                    'X-Auto-Response-Suppress': 'OOF, AutoReply',
+                    'X-Mailer': 'Sellvende-Email-Engine/2.0',
+                };
+                if (unsubscribe_url) {
+                    mailHeaders['List-Unsubscribe'] = `<${unsubscribe_url}>`;
+                    mailHeaders['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+                }
+
                 const info = await transporter.sendMail({
                     from,
                     to: Array.isArray(to) ? to : [to],
                     subject,
                     html,
+                    headers: mailHeaders,
                 })
                 console.log('Gmail sent:', info.messageId)
                 return jsonResponse({ success: true, messageId: info.messageId, engine: 'gmail' }, 200, corsHeaders)
@@ -204,6 +216,17 @@ serve(async (req) => {
                 )
             }
 
+            // Build RFC 2369 headers for bulk compliance
+            const resendHeaders: Record<string, string> = {
+                'Precedence': 'bulk',
+                'X-Auto-Response-Suppress': 'OOF, AutoReply',
+                'X-Mailer': 'Sellvende-Email-Engine/2.0',
+            };
+            if (unsubscribe_url) {
+                resendHeaders['List-Unsubscribe'] = `<${unsubscribe_url}>`;
+                resendHeaders['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click';
+            }
+
             const resendRes = await fetch('https://api.resend.com/emails', {
                 method: 'POST',
                 headers: {
@@ -215,6 +238,10 @@ serve(async (req) => {
                     to: Array.isArray(to) ? to : [to],
                     subject,
                     html,
+                    headers: resendHeaders,
+                    tags: [
+                        { name: 'agencia_id', value: agencia_id }
+                    ]
                 }),
             })
 

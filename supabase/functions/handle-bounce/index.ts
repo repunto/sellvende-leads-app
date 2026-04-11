@@ -147,11 +147,25 @@ serve(async (req: Request) => {
 
     console.log(`[Bounce] Processing ${eventType} for: ${bouncedEmail}`)
 
-    // ── Find the lead(s) by email ──
-    const { data: matchedLeads, error: findErr } = await supabase
-        .from('leads')
-        .select('id, agencia_id, email, nombre')
-        .eq('email', bouncedEmail.toLowerCase().trim())
+    // ── Find the lead(s) ──
+    // Use strict matching via tags if available to ensure correct tenant routing!
+    const tags = data?.tags || [];
+    const tagAgenciaId = tags.find((t: any) => t.name === 'agencia_id')?.value;
+    const tagLeadId = tags.find((t: any) => t.name === 'lead_id')?.value;
+
+    let query = supabase.from('leads').select('id, agencia_id, email, nombre');
+    
+    if (tagLeadId && tagAgenciaId) {
+        // STRICT TENANT ISOLATION: We know exactly which lead and agency this bounce belongs to.
+        query = query.eq('id', tagLeadId).eq('agencia_id', tagAgenciaId);
+        console.log(`[Bounce] Using strict tenant matching via tags. Lead: ${tagLeadId}, Agencia: ${tagAgenciaId}`);
+    } else {
+        // Fallback (for older emails sent without tags)
+        query = query.eq('email', bouncedEmail.toLowerCase().trim());
+        console.log(`[Bounce] No tags found, falling back to email match: ${bouncedEmail}`);
+    }
+
+    const { data: matchedLeads, error: findErr } = await query;
 
     if (findErr) {
         console.error('[Bounce] DB lookup error:', findErr.message)
@@ -159,7 +173,7 @@ serve(async (req: Request) => {
     }
 
     if (!matchedLeads || matchedLeads.length === 0) {
-        console.log(`[Bounce] No lead found for email: ${bouncedEmail}`)
+        console.log(`[Bounce] No lead found for target bounce.`)
         return ok
     }
 

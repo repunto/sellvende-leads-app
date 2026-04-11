@@ -68,15 +68,15 @@ serve(async (req: Request) => {
         const config: Record<string, string> = {}
         configData?.forEach((r: any) => { config[r.clave] = r.valor })
 
-        const token = config['meta_page_access_token']
+        const metaToken = config['meta_page_access_token']
         const pageId = config['meta_page_id']
 
-        if (!token || !pageId) {
+        if (!metaToken || !pageId) {
             return new Response(JSON.stringify({ error: 'Configuración Meta incompleta' }), { headers: corsHeaders, status: 400 })
         }
 
         // 2. Fetch Forms
-        const formsResp = await fetch(`https://graph.facebook.com/v19.0/${pageId}/leadgen_forms?fields=id,name&access_token=${token}`)
+        const formsResp = await fetch(`https://graph.facebook.com/v19.0/${pageId}/leadgen_forms?fields=id,name&access_token=${metaToken}`)
         const formsData = await formsResp.json()
         if (formsData.error) throw new Error('Error Meta Forms: ' + formsData.error.message)
         
@@ -99,7 +99,7 @@ serve(async (req: Request) => {
             const formName = form.name || 'Formulario Meta'
             const productoFromForm = formName.split('-')[0].trim()
 
-            let url = `https://graph.facebook.com/v19.0/${form.id}/leads?fields=id,field_data,created_time,platform&limit=100&access_token=${token}`
+            let url = `https://graph.facebook.com/v19.0/${form.id}/leads?fields=id,field_data,created_time,platform&limit=100&access_token=${metaToken}`
 
             while (url) {
                 const resp = await fetch(url)
@@ -115,6 +115,7 @@ serve(async (req: Request) => {
                     const fields = lead.field_data || []
                     let nombre = '', email = '', telefono = '', campana = productoFromForm
                     let idioma = 'ES', personas = '', temporada = '', notas = ''
+                    let utm_source = '', utm_medium = '', utm_campaign = ''
                     let plataforma = 'facebook'
                     let origen = 'Facebook Ads'
 
@@ -139,6 +140,9 @@ serve(async (req: Request) => {
                         else if (fn.includes('language') || fn.includes('idioma')) idioma = fv.toUpperCase().includes('EN') ? 'EN' : 'ES'
                         else if (fn.includes('cuanta') || fn.includes('persona') || fn.includes('pasajero') || fn.includes('pax')) personas = fv
                         else if (fn.includes('cuando') || fn.includes('fecha') || fn.includes('viaj') || fn.includes('travel') || fn.includes('temporada') || fn.includes('mes')) temporada = fv
+                        else if (fn === 'utm_source' || fn.includes('source')) utm_source = fv
+                        else if (fn === 'utm_medium' || fn.includes('medium')) utm_medium = fv
+                        else if (fn === 'utm_campaign' || fn.includes('campaign')) utm_campaign = fv
                         else if (!['inbox_url', 'is_organic', 'id', 'ad_id', 'adset_id', 'campaign_id', 'form_id', 'platform'].includes(fn)) { notas += f.name + ': ' + fv + ' | ' }
                     }
 
@@ -165,7 +169,10 @@ serve(async (req: Request) => {
                         notas: notas.replace(/\s*\|\s*$/, ''),
                         estado: 'nuevo',
                         meta_lead_id: metaId || null,
-                        created_at: lead.created_time || new Date().toISOString()
+                        created_at: lead.created_time || new Date().toISOString(),
+                        utm_source: utm_source || null,
+                        utm_medium: utm_medium || null,
+                        utm_campaign: utm_campaign || null
                     }
 
                     let inserted = false
@@ -191,6 +198,76 @@ serve(async (req: Request) => {
                         if (metaId) seenMetaIds.add(metaId)
                         if (hasEmail) seenEmails.add(cleanEmail)
                         if (cleanPhone) seenPhones.add(cleanPhone)
+
+                        // ── AUTO-ENROLLMENT: Assign lead to matching sequence ──
+                        // Mirror the same logic from meta-webhook (lines 300-351)
+                        try {
+                            // We need the inserted lead's UUID for leads_secuencias
+                            const { data: foundLead } = metaId
+                                ? await supabase.from('leads').select('id').eq('meta_lead_id', metaId).maybeSingle()
+                                : hasEmail
+                                    ? await supabase.from('leads').select('id').eq('email', cleanEmail).eq('agencia_id', agencia_id).maybeSingle()
+                                    : { data: null }
+
+                            if (foundLead?.id) {
+                                const normalizedProduct = productoFromForm.toLowerCase().trim()
+
+                                // Check if already enrolled in ANY sequence
+                                const { data: existingEnroll } = await supabase
+                                    .from('leads_secuencias')
+                                    .select('id')
+                                    .eq('lead_id', foundLead.id)
+                                    .in('estado', ['en_progreso', 'completada'])
+                                    .limit(1)
+
+                                if (!existingEnroll || existingEnroll.length === 0) {
+                                    // 1. Try smart match by producto_match keyword
+                                    const { data: matchedSecs } = await supabase
+                                        .from('secuencias_marketing')
+                                        .select('id, nombre')
+                                        .eq('agencia_id', agencia_id)
+                                        .eq('activa', true)
+                                        .ilike('producto_match', `%${normalizedProduct}%`)
+                                        .limit(1)
+
+                                    let targetSecId = matchedSecs?.[0]?.id
+
+                                    if (targetSecId) {
+                                        console.log(`[Sync Auto-Enroll] Smart match: "${matchedSecs[0].nombre}" for "${productoFromForm}"`)
+                                    } else {
+                                        // 2. Fallback: find a General sequence
+                                        const { data: generalSecs } = await supabase
+                                            .from('secuencias_marketing')
+                                            .select('id, nombre')
+                                            .eq('agencia_id', agencia_id)
+                                            .eq('activa', true)
+                                            .or('producto_match.is.null,producto_match.eq.,producto_match.ilike.general')
+                                            .limit(1)
+
+                                        if (generalSecs?.[0]?.id) {
+                                            targetSecId = generalSecs[0].id
+                                            console.log(`[Sync Auto-Enroll] Fallback General: "${generalSecs[0].nombre}"`)
+                                        }
+                                    }
+
+                                    if (targetSecId) {
+                                        await supabase.from('leads_secuencias').insert({
+                                            agencia_id: agencia_id,
+                                            lead_id: foundLead.id,
+                                            secuencia_id: targetSecId,
+                                            estado: 'en_progreso',
+                                            ultimo_paso_ejecutado: 0
+                                        })
+                                        console.log(`[Sync Auto-Enroll] ✅ Lead ${foundLead.id} enrolled in sequence ${targetSecId}`)
+                                    } else {
+                                        console.warn(`[Sync Auto-Enroll] ⚠️ No active sequence found for lead ${foundLead.id} (product: "${productoFromForm}"). Lead will NOT receive automated emails.`)
+                                    }
+                                }
+                            }
+                        } catch (enrollErr) {
+                            console.error(`[Sync Auto-Enroll] Error enrolling lead:`, enrollErr.message)
+                            // Non-blocking: lead was inserted, enrollment failure shouldn't break sync
+                        }
                     }
                 }
                 

@@ -14,7 +14,9 @@ import AsesoresPage from './pages/AsesoresPage'
 import ActivityPage from './pages/ActivityPage'
 import MarketingPage from './pages/MarketingPage'
 import FinanzasPage from './pages/FinanzasPage'
+import RoiDashboard from './pages/RoiDashboard'
 import ConfiguracionPage from './pages/ConfiguracionPage'
+import BillingPage from './pages/BillingPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 
 class ErrorBoundary extends Component {
@@ -98,6 +100,7 @@ export default function App() {
             <Route path="/productos" element={<ProtectedRoute><ProductosPage /></ProtectedRoute>} />
             <Route path="/extras" element={<ProtectedRoute><ExtrasPage /></ProtectedRoute>} />
             <Route path="/finanzas" element={<ProtectedRoute><FinanzasPage /></ProtectedRoute>} />
+            <Route path="/analytics" element={<ProtectedRoute><RoiDashboard /></ProtectedRoute>} />
             {/* Routes above already handle /ventas, /productos, /extras */}
             {/* Rutas que mantienen su nombre */}
             <Route path="/calendario" element={<ProtectedRoute><CalendarioPage /></ProtectedRoute>} />
@@ -106,6 +109,7 @@ export default function App() {
             <Route path="/asesores" element={<ProtectedRoute><AsesoresPage /></ProtectedRoute>} />
             <Route path="/marketing" element={<ProtectedRoute><MarketingPage /></ProtectedRoute>} />
             <Route path="/configuracion" element={<ProtectedRoute><ConfiguracionPage /></ProtectedRoute>} />
+            <Route path="/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

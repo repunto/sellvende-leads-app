@@ -32,41 +32,42 @@ export default function LeadsTableView({
 }) {
     return (
         <div className="table-container">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '0 4px' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                    📊 <strong>{totalLeads ?? leads.length}</strong> leads en total
-                    {cargandoSeleccionMassiva && <span style={{ marginLeft: 8, color: 'var(--color-primary)' }}>⏳ Seleccionando todos...</span>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, padding: '0 4px', minHeight: 24 }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    {selectedLeads.size > 0 && (() => {
+                        const excluded = (totalLeads ?? leads.length) - selectedLeads.size
+                        return (
+                            <span style={{ color: '#f59e0b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span>✨ {selectedLeads.size} de {totalLeads ?? leads.length} leads seleccionados — Listos para la Secuencia Masiva.</span>
+                                {excluded > 0 && (
+                                    <span style={{ color: 'var(--color-text-secondary)', fontWeight: 400 }}>
+                                        ({excluded} excluidos)
+                                    </span>
+                                )}
+                                <span style={{ color: '#ef4444', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline', marginLeft: 4 }} onClick={() => setSelectedLeads(new Set())}>Borrar selección</span>
+                            </span>
+                        )
+                    })()}
+                    
+                    {cargandoSeleccionMassiva && <span style={{ color: 'var(--color-primary)' }}>⏳ Seleccionando todos...</span>}
                 </span>
-                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-                    Mostrando {startIdx + 1}–{Math.min(startIdx + LEADS_PER_PAGE, startIdx + leads.length)}
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span>📊 <strong>{totalLeads ?? leads.length}</strong> leads en total</span>
+                    <span style={{ opacity: 0.5 }}>|</span>
+                    <span>Mostrando {startIdx + 1}–{Math.min(startIdx + LEADS_PER_PAGE, startIdx + leads.length)}</span>
                 </span>
             </div>
 
-            {selectedLeads.size > 0 && (() => {
-                const excluded = (totalLeads ?? 0) - selectedLeads.size
-                return (
-                    <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', color: 'var(--color-text)', border: '1px solid #f59e0b', borderBottom: 'none', borderTopLeftRadius: 8, borderTopRightRadius: 8, transition: 'all 0.3s' }}>
-                        <div>
-                            ✨ <strong>{selectedLeads.size}</strong> de <strong>{totalLeads ?? selectedLeads.size}</strong> leads seleccionados — Listos para la Secuencia Masiva.
-                            {excluded > 0 && (
-                                <span style={{ marginLeft: 6, color: 'var(--color-text-secondary)', fontWeight: 400 }}>
-                                    ({excluded} excluido{excluded !== 1 ? 's' : ''}: sin email o dados de baja)
-                                </span>
-                            )}
-                        </div>
-                        <span style={{ color: '#ef4444', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }} onClick={() => setSelectedLeads(new Set())}>Borrar selección</span>
-                    </div>
-                )
-            })()}
-
-            <table className="data-table" style={{ borderTopLeftRadius: selectedLeads.size > 0 ? 0 : '' }}>
+            <table className="data-table">
                 <thead>
                     <tr>
                         <th style={{ width: 45, textAlign: 'center' }}>
                             <input type="checkbox" onChange={toggleSelectAll}
                                 title="Seleccionar TODOS los leads de todas las páginas"
                                 disabled={cargandoSeleccionMassiva}
-                                checked={selectedLeads.size > 0} />
+                                checked={selectedLeads.size > 0 && selectedLeads.size >= (totalLeads ?? leads.length)}
+                                ref={el => { if (el) el.indeterminate = selectedLeads.size > 0 && selectedLeads.size < (totalLeads ?? leads.length) }}
+                                />
                         </th>
                         <th style={{ width: 45, textAlign: 'center' }}>#</th>
                         <th>Nombre</th>
@@ -83,9 +84,10 @@ export default function LeadsTableView({
                     {paginated.map((lead, idx) => (
                         <tr key={lead.id} className={lead._isNew ? 'lead-new-flash' : ''} style={{ opacity: lead.email ? (lead.email_rebotado ? 0.55 : 1) : 0.7, background: lead.email_rebotado ? 'rgba(239,68,68,0.03)' : '' }}>
                             <td style={{ textAlign: 'center' }}>
-                                <input type="checkbox" disabled={!lead.email || lead.email_rebotado}
+                                <input type="checkbox" disabled={!lead.email || lead.email_rebotado || lead.unsubscribed}
                                     checked={selectedLeads.has(lead.id)}
-                                    onChange={() => toggleSelectLead(lead.id)} />
+                                    readOnly
+                                    onClick={(e) => toggleSelectLead(lead.id, e.shiftKey, idx)} />
                             </td>
                             <td style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '0.8rem', fontWeight: 600 }}>{startIdx + idx + 1}</td>
                             <td style={{ color: 'var(--color-text)', fontWeight: 500 }}>

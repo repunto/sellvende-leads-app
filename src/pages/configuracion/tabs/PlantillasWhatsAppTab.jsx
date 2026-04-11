@@ -25,7 +25,7 @@ export default function PlantillasWhatsAppTab({ showToast, agencia }) {
     const [waSaving, setWaSaving] = useState(false)
 
     const [formData, setFormData] = useState({
-        nombre: '', tipo: TIPOS_PLANTILLA[0], producto_id: '', origen: '',
+        nombre: '', tipo: TIPOS_PLANTILLA[0], origen: '',
         contenido: '', idioma: 'ES',
     })
 
@@ -122,14 +122,13 @@ export default function PlantillasWhatsAppTab({ showToast, agencia }) {
             setFormData({
                 nombre: plantilla.nombre || '',
                 tipo: plantilla.tipo || TIPOS_PLANTILLA[0],
-                producto_id: plantilla.producto_id || '',
                 origen: plantilla.origen || '',
                 contenido: plantilla.contenido || '',
                 idioma: plantilla.idioma || 'ES',
             })
         } else {
             setEditingPlantilla(null)
-            setFormData({ nombre: '', tipo: TIPOS_PLANTILLA[0], producto_id: '', origen: '', contenido: '', idioma: 'ES' })
+            setFormData({ nombre: '', tipo: TIPOS_PLANTILLA[0], origen: '', contenido: '', idioma: 'ES' })
         }
         setShowForm(true)
     }
@@ -138,13 +137,7 @@ export default function PlantillasWhatsAppTab({ showToast, agencia }) {
         e.preventDefault()
         try {
             const payload = { ...formData, agencia_id: agencia.id }
-            if (TIPOS_MARKETING.includes(payload.tipo)) {
-                payload.producto_id = null;
-                if (payload.origen === '') payload.origen = null;
-            } else {
-                payload.origen = null;
-                if (payload.producto_id === '') payload.producto_id = null;
-            }
+            if (payload.origen === '') payload.origen = null;
             if (editingPlantilla) {
                 const { error } = await supabase.from('plantillas_whatsapp').update(payload).eq('id', editingPlantilla.id)
                 if (error) throw error
@@ -178,11 +171,7 @@ export default function PlantillasWhatsAppTab({ showToast, agencia }) {
     }
 
     function getCampaignLabel(p) {
-        if (TIPOS_MARKETING.includes(p.tipo)) {
-            return p.origen ? p.origen : 'General (Cualquier formulario)'
-        }
-        const producto = productos.find(t => t.id === p.producto_id)
-        return producto ? producto.nombre : 'General (Todos los formularios)'
+        return p.origen ? p.origen : 'General (Cualquier formulario)'
     }
 
     function getTipoBadge(tipo) {
@@ -384,7 +373,7 @@ export default function PlantillasWhatsAppTab({ showToast, agencia }) {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 0.6fr', gap: 12 }}>
                                 <div className="form-group" style={{ margin: 0 }}>
                                     <label className="form-label">Tipo *</label>
-                                    <select className="form-select" value={formData.tipo} onChange={e => setFormData({ ...formData, tipo: e.target.value, origen: '', producto_id: '' })}>
+                                    <select className="form-select" value={formData.tipo} onChange={e => setFormData({ ...formData, tipo: e.target.value, origen: '' })}>
                                         <optgroup label="Marketing">
                                             {TIPOS_MARKETING.map(t => <option key={t} value={t}>{TIPOS_LABELS[t]}</option>)}
                                         </optgroup>
@@ -394,23 +383,11 @@ export default function PlantillasWhatsAppTab({ showToast, agencia }) {
                                     </select>
                                 </div>
                                 <div className="form-group" style={{ margin: 0 }}>
-                                    {TIPOS_MARKETING.includes(formData.tipo) ? (
-                                        <>
-                                            <label className="form-label">Campaña / Formulario</label>
-                                            <select className="form-select" value={formData.origen || ''} onChange={e => setFormData({ ...formData, origen: e.target.value })}>
-                                                <option value="">General</option>
-                                                {origenes.map(o => <option key={o} value={o}>{o}</option>)}
-                                            </select>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <label className="form-label">Producto / Formulario</label>
-                                            <select className="form-select" value={formData.producto_id} onChange={e => setFormData({ ...formData, producto_id: e.target.value })}>
-                                                <option value="">General</option>
-                                                {productos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-                                            </select>
-                                        </>
-                                    )}
+                                    <label className="form-label">Campaña / Formulario</label>
+                                    <select className="form-select" value={formData.origen || ''} onChange={e => setFormData({ ...formData, origen: e.target.value })}>
+                                        <option value="">General</option>
+                                        {origenes.map(o => <option key={o} value={o}>{o}</option>)}
+                                    </select>
                                 </div>
                                 <div className="form-group" style={{ margin: 0 }}>
                                     <label className="form-label">Idioma</label>
