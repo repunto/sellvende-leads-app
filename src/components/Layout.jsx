@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { usePlan } from '../hooks/usePlan'
 import CommandPalette from './CommandPalette'
 import { supabase } from '../lib/supabase'
 
@@ -29,7 +28,6 @@ const configItems = [
 
 export default function Layout({ children }) {
     const { user, agencia, rol, signOut } = useAuth()
-    const { isTrial, isExpired, isActive, daysRemaining, planName } = usePlan()
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [nombreVisible, setNombreVisible] = useState('')
     const location = useLocation()
@@ -40,7 +38,7 @@ export default function Layout({ children }) {
             .then(({ data }) => {
                 if (data?.valor) setNombreVisible(data.valor)
             })
-            .catch(() => {})
+            .catch(() => { })
     }, [agencia?.id])
 
     const initials = user?.email
@@ -80,53 +78,19 @@ export default function Layout({ children }) {
                 </div>
 
                 <div style={{ padding: '0 20px', marginBottom: '24px' }}>
-                    <NavLink to="/billing" style={{ textDecoration: 'none', display: 'block' }}>
-                        <div 
+                    <NavLink to="/" style={{ textDecoration: 'none', display: 'block' }}>
+                        <div
                             style={{
-                                background: 'rgba(255, 255, 255, 0.03)',
-                                border: '1px solid rgba(255, 255, 255, 0.08)',
-                                borderRadius: '12px',
-                                padding: '12px 14px',
                                 display: 'flex',
-                                flexDirection: 'column',
+                                alignItems: 'center',
                                 gap: '8px',
-                                transition: 'all 0.2s ease',
-                                cursor: 'pointer',
-                            }}
-                            onMouseEnter={(e) => { 
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
-                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)' 
-                                e.currentTarget.style.transform = 'translateY(-1px)'
-                            }}
-                            onMouseLeave={(e) => { 
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
-                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)' 
-                                e.currentTarget.style.transform = 'translateY(0)'
+                                padding: '8px 0',
                             }}
                         >
-                            <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Entorno de Trabajo</div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                                <span style={{ color: '#f8fafc', fontWeight: 600, fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 8px rgba(16, 185, 129, 0.5)', flexShrink: 0 }}></div>
-                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{nombreVisible || agencia?.nombre || 'Cargando...'}</span>
-                                </span>
-                                <div style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    padding: '3px 8px',
-                                    borderRadius: '6px',
-                                    fontSize: '0.65rem',
-                                    fontWeight: 800,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px',
-                                    flexShrink: 0,
-                                    ...(isExpired ? { background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' } 
-                                     : isTrial ? { background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)' } 
-                                     : { background: 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05))', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }),
-                                }}>
-                                    {isExpired ? 'VENCIDO' : isTrial ? `TRIAL · ${daysRemaining}d` : `${planName}`}
-                                </div>
-                            </div>
+                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 8px rgba(16, 185, 129, 0.5)', flexShrink: 0 }}></div>
+                            <span style={{ color: '#f8fafc', fontWeight: 600, fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {nombreVisible || agencia?.nombre || 'Cargando...'}
+                            </span>
                         </div>
                     </NavLink>
                 </div>
