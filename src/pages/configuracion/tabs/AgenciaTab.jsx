@@ -70,7 +70,7 @@ export default function AgenciaTab({ showToast, agencia }) {
                 setIsMetaLoading(false)
                 showToast('Inicio de sesión cancelado o rechazado por Facebook.', 'error')
             }
-        }, { scope: 'pages_show_list,pages_manage_ads,leads_retrieval', auth_type: 'rerequest' })
+        }, { scope: 'pages_show_list,pages_manage_ads,leads_retrieval,business_management,pages_read_engagement', auth_type: 'rerequest' })
     }
 
     const selectFbPage = async (page) => {
