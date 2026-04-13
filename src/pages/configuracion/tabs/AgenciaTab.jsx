@@ -54,7 +54,15 @@ export default function AgenciaTab({ showToast, agencia }) {
                     }
                     const pages = data.pages || []
                     if (pages.length === 0) {
-                        return showToast('Conexión OK, pero tu cuenta no tiene Fanpages disponibles o faltan permisos en la App Meta. Revisa que "leads_retrieval" está activo.', 'error')
+                        const dbg = data.debug || {}
+                        console.warn('[Meta OAuth Debug]', dbg)
+                        const hasPagePerm = dbg.has_pages_show_list
+                        const owner = dbg.owner?.name || '?'
+                        const perms = (dbg.granted_permissions || []).join(', ') || 'ninguno'
+                        return showToast(
+                            `Sin páginas para "${owner}". pages_show_list: ${hasPagePerm ? '✅' : '❌'}. Permisos: ${perms}`,
+                            'error'
+                        )
                     }
                     showToast(`Conexión exitosa — ${pages.length} página(s) encontrada(s). Selecciona la tuya.`, 'success')
                     setFbPages(pages)
