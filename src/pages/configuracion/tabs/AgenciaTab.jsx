@@ -45,20 +45,26 @@ export default function AgenciaTab({ showToast, agencia }) {
                     setIsMetaLoading(false)
                     if (error) {
                         console.error('Meta OAuth Runtime Error:', error);
-                        return showToast(error.message || 'Error del servidor Meta', 'error')
+                        return showToast('Error del servidor: ' + (error.message || 'Revisa los Secrets en Supabase'), 'error')
                     }
-                    if (data && (data.error || !data.pages)) {
+                    if (!data || data.error) {
                         console.error('Meta OAuth Data Error:', data);
-                        return showToast(data.error || data.message || 'Error interno de Meta', 'error')
+                        return showToast(data?.error || data?.message || 'Error interno de Meta. Revisa los logs.', 'error')
                     }
-                    setFbPages((data && data.pages) ? data.pages : [])
+                    const pages = data.pages || []
+                    if (pages.length === 0) {
+                        return showToast('Conexión OK, pero tu cuenta no tiene Fanpages disponibles o faltan permisos en la App Meta. Revisa que "leads_retrieval" está activo.', 'error')
+                    }
+                    showToast(`Conexión exitosa — ${pages.length} página(s) encontrada(s). Selecciona la tuya.`, 'success')
+                    setFbPages(pages)
                 }).catch((err) => {
                     setIsMetaLoading(false)
-                    showToast('Error de red al conectar', 'error')
+                    showToast('Error de red al conectar con Supabase', 'error')
                     console.error(err)
                 })
             } else {
                 setIsMetaLoading(false)
+                showToast('Inicio de sesión cancelado o rechazado por Facebook.', 'error')
             }
         }, { scope: 'pages_show_list,pages_manage_ads,leads_retrieval' })
     }
