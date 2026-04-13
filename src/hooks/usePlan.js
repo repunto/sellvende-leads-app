@@ -37,7 +37,34 @@ export function usePlan() {
                 .single()
 
             if (error && error.code === 'PGRST116') {
-                // No subscription found — will be created by AuthContext on signup
+                // No subscription found — let's auto-create it gracefully
+                try {
+                    let { data: planData } = await supabase.from('planes').select('id').eq('nombre', 'Profesional').single()
+                    if (!planData) {
+                        const { data: anyPlan } = await supabase.from('planes').select('id').limit(1).single()
+                        planData = anyPlan
+                    }
+                    if (planData) {
+                        const newSub = {
+                            agencia_id: agencia.id,
+                            plan_id: planData.id,
+                            estado: 'trial',
+                            fecha_inicio: new Date().toISOString(),
+                            trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+                        }
+                        await supabase.from('suscripciones').insert(newSub)
+                        
+                        const { data: createdSub } = await supabase.from('suscripciones').select('*, plan:planes(*)').eq('agencia_id', agencia.id).single()
+                        if (createdSub) {
+                            setSuscripcion(createdSub)
+                            setPlan(createdSub.plan)
+                            return
+                        }
+                    }
+                } catch (e) {
+                    console.error('[usePlan] Error auto-creating subscription:', e)
+                }
+                
                 setSuscripcion(null)
                 setPlan(null)
             } else if (!error && data) {

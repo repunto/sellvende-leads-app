@@ -81,51 +81,58 @@ export function useMetaSync({ agenciaId, showToast, setConfirmDialog }) {
         setLoading(true)
         setPendingNewLeads(0) // clear any buffered notification on reload
 
-        const { data: rows, error } = await supabase.rpc('get_leads_page', {
-            p_agencia_id:   agenciaId,
-            p_page:         page,
-            p_per_page:     LEADS_PER_PAGE,
-            p_search:       search   || null,
-            p_estado:       estado   || null,
-            p_form_name:    formName || null,
-            p_date_from:    dateFrom || null,
-            p_date_to:      dateTo   || null,
-            p_kanban:       isKanban,
-            p_kanban_limit: KANBAN_MAX_LEADS,
-        })
+        try {
+            const { data: rows, error } = await supabase.rpc('get_leads_page', {
+                p_agencia_id:   agenciaId,
+                p_page:         page,
+                p_per_page:     LEADS_PER_PAGE,
+                p_search:       search   || null,
+                p_estado:       estado   || null,
+                p_form_name:    formName || null,
+                p_date_from:    dateFrom || null,
+                p_date_to:      dateTo   || null,
+                p_kanban:       isKanban,
+                p_kanban_limit: KANBAN_MAX_LEADS,
+            })
 
-        if (error) {
-            console.error('[loadLeads] RPC error:', error)
-            showToast('Error cargando leads: ' + error.message, 'error')
-            setLoading(false)
-            return
-        }
-
-        const serverTotal = rows?.[0]?.total_count ?? 0
-        setLeads(rows || [])
-        setTotalLeads(Number(serverTotal))
-
-        await Promise.all([refreshKpis(), refreshEmailCounts()])
-
-        // Fetch sequence enrollments for visible leads only
-        if (rows && rows.length > 0) {
-            const visibleIds = rows.map(l => l.id)
-            const allSeqs = []
-            for (let i = 0; i < visibleIds.length; i += 50) {
-                const chunk = visibleIds.slice(i, i + 50)
-                const { data: seqChunk } = await supabase
-                    .from('leads_secuencias')
-                    .select('lead_id, secuencia_id, estado, ultimo_paso_ejecutado, secuencias_marketing(nombre)')
-                    .in('lead_id', chunk)
-                    .in('estado', ['en_progreso', 'pausado'])
-                if (seqChunk) allSeqs.push(...seqChunk)
+            if (error) {
+                console.error('[loadLeads] RPC error:', error)
+                showToast('Error cargando leads: ' + error.message, 'error')
+                return
             }
-            const enrollments = {}
-            allSeqs.forEach(s => { enrollments[s.lead_id] = s })
-            setSequenceEnrollments(enrollments)
-        }
 
-        setLoading(false)
+            const serverTotal = rows?.[0]?.total_count ?? 0
+            setLeads(rows || [])
+            setTotalLeads(Number(serverTotal))
+
+            try {
+                await Promise.all([refreshKpis(), refreshEmailCounts()])
+            } catch (kpiErr) {
+                console.warn('Error fetching KPIs/email counts:', kpiErr)
+            }
+
+            // Fetch sequence enrollments for visible leads only
+            if (rows && rows.length > 0) {
+                const visibleIds = rows.map(l => l.id)
+                const allSeqs = []
+                for (let i = 0; i < visibleIds.length; i += 50) {
+                    const chunk = visibleIds.slice(i, i + 50)
+                    const { data: seqChunk } = await supabase
+                        .from('leads_secuencias')
+                        .select('lead_id, secuencia_id, estado, ultimo_paso_ejecutado, secuencias_marketing(nombre)')
+                        .in('lead_id', chunk)
+                        .in('estado', ['en_progreso', 'pausado'])
+                    if (seqChunk) allSeqs.push(...seqChunk)
+                }
+                const enrollments = {}
+                allSeqs.forEach(s => { enrollments[s.lead_id] = s })
+                setSequenceEnrollments(enrollments)
+            }
+        } catch (err) {
+            console.error('[loadLeads] Unhandled error:', err)
+        } finally {
+            setLoading(false)
+        }
     }, [agenciaId, showToast, refreshKpis, refreshEmailCounts])
 
     // ────────────────────────────────────────────────────────────────────────

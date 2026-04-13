@@ -42,17 +42,29 @@ export function AuthProvider({ children }) {
                         .single()
 
                     if (!linkErr && newLink) {
-                        data = newLink
+                        data = {
+                            rol: newLink.rol,
+                            agencia: {
+                                id: newAgencia.id,
+                                nombre: newAgencia.nombre || 'Mi Agencia',
+                                plan: newAgencia.plan || 'trial'
+                            }
+                        }
                         error = null
                     }
 
                     // Auto-create trial subscription (14 days)
                     try {
-                        const { data: planData } = await supabase
+                        let { data: planData } = await supabase
                             .from('planes')
                             .select('id')
                             .eq('nombre', 'Profesional')
                             .single()
+
+                        if (!planData) {
+                            const { data: anyPlan } = await supabase.from('planes').select('id').limit(1).single()
+                            planData = anyPlan
+                        }
 
                         if (planData) {
                             await supabase.from('suscripciones').insert({
@@ -72,8 +84,15 @@ export function AuthProvider({ children }) {
 
             if (!error && data) {
                 setRol(data.rol)
-                setAgencia(data.agencia) // { id, nombre, plan }
+                
+                let fetchedAgencia = data.agencia
+                if (Array.isArray(fetchedAgencia)) {
+                    fetchedAgencia = fetchedAgencia[0]
+                }
+                
+                setAgencia(fetchedAgencia) // { id, nombre, plan }
             } else {
+                console.error('[AuthContext] Error fetching profile or empty data:', error || 'No data')
                 setRol(null)
                 setAgencia(null)
             }
