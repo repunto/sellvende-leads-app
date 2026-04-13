@@ -454,7 +454,7 @@ export default function LeadDetailPanel({
                 <div style={{ padding: '16px 24px', borderTop: '1px solid var(--color-border)', background: 'var(--color-bg-card)', display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => openForm(detailLead)}>✏️ Editar</button>
-                        <Link to="/ventas" state={{ convertLead: detailLead }} className="btn btn-success" style={{ flex: 1, textAlign: 'center' }}>🎫 Ventar</Link>
+                        <Link to="/ventas" state={{ convertLead: detailLead }} className="btn btn-success" style={{ flex: 1, textAlign: 'center' }}>🎫 Registrar Venta</Link>
                     </div>
                     {/* Manual bounce toggle — visible only when email exists and NOT already bounced */}
                     {detailLead.email && !detailLead.email_rebotado && (

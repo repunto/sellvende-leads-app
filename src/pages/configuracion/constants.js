@@ -1,8 +1,6 @@
 export const TABS = [
     { id: 'agencia', label: '🏢 Datos de Agencia', icon: '🏢' },
     { id: 'integraciones', label: '🔌 Integraciones Ads', icon: '🔌' },
-    { id: 'plantillas', label: '✉️ Plantillas Email', icon: '✉️' },
-    { id: 'whatsapp', label: '📲 Plantillas WhatsApp', icon: '📲' },
     { id: 'backup', label: '☁️ Copias de Seguridad', icon: '☁️' },
     { id: 'seed', label: '📥 Datos Iniciales', icon: '📥' },
 ]
@@ -25,7 +23,7 @@ export const SHORTCODES_HELP = [
     { code: '{nombre}', desc: 'Nombre del cliente' },
     { code: '{producto}', desc: 'Producto contratado' },
     { code: '{fecha}', desc: 'Fecha del servicio' },
-    { code: '{fechaviaje}', desc: 'Fecha / mes programado (alias de {fecha})' },
+    { code: '{fecha_entrega}', desc: 'Fecha / mes programado (alias de {fecha})' },
     { code: '{pax}', desc: 'Número de unidades' },
     { code: '{precio}', desc: 'Precio total de venta' },
     { code: '{adelanto}', desc: 'Monto del adelanto' },

@@ -25,7 +25,7 @@ export default function MassEmailModal({
         .replace(/\{producto\}/gi, '[Producto de Interés]')
         .replace(/\{Agencia\}/gi, agencia?.nombre || 'Nuestra Agencia')
         .replace(/\{agencia\}/gi, agencia?.nombre || 'Nuestra Agencia')
-        .replace(/\{FechaViaje\}/gi, '[Fecha de Viaje]')
+        .replace(/\{(FechaViaje|fecha_entrega)\}/gi, '[Fecha de Entrega/Servicio]')
         .replace(/\{social_proof\}/gi, '')
 
     return (

@@ -30,7 +30,7 @@ export function getLeadScore(lead) {
     // Engagement (max 2 pts)
     if (lead.estado === 'contactado') score += 1
     if (lead.estado === 'cotizado') score += 1.5
-    if (lead.estado === 'ventado') score += 2
+    if (lead.estado === 'cliente') score += 2
     if (lead.ultimo_contacto) score += 0.5
     // Recency (max 1 pt)
     const daysAgo = (Date.now() - new Date(lead.created_at).getTime()) / 86400000

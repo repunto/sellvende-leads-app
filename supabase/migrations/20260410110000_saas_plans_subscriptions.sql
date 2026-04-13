@@ -42,6 +42,7 @@ ON CONFLICT (nombre) DO NOTHING;
 -- 4. RLS para suscripciones
 ALTER TABLE public.suscripciones ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own agency subscription" ON public.suscripciones;
 CREATE POLICY "Users can view own agency subscription"
   ON public.suscripciones FOR SELECT
   USING (agencia_id IN (
@@ -49,6 +50,7 @@ CREATE POLICY "Users can view own agency subscription"
     WHERE usuario_id = auth.uid()
   ));
 
+DROP POLICY IF EXISTS "Users can update own agency subscription" ON public.suscripciones;
 CREATE POLICY "Users can update own agency subscription"
   ON public.suscripciones FOR UPDATE
   USING (agencia_id IN (
@@ -56,6 +58,7 @@ CREATE POLICY "Users can update own agency subscription"
     WHERE usuario_id = auth.uid()
   ));
 
+DROP POLICY IF EXISTS "Users can insert own agency subscription" ON public.suscripciones;
 CREATE POLICY "Users can insert own agency subscription"
   ON public.suscripciones FOR INSERT
   WITH CHECK (agencia_id IN (
@@ -65,6 +68,7 @@ CREATE POLICY "Users can insert own agency subscription"
 
 -- 5. RLS para planes (lectura pública)
 ALTER TABLE public.planes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can read plans" ON public.planes;
 CREATE POLICY "Anyone can read plans" ON public.planes FOR SELECT USING (true);
 
 -- 6. Index para performance

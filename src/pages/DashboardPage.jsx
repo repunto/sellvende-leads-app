@@ -337,16 +337,14 @@ export default function DashboardPage() {
                 <div style={{
                     ...animStyle(500),
                     marginTop: 28,
-                    background: 'linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.04))',
-                    border: '1px solid rgba(99,102,241,0.15)',
+                    background: 'rgba(99,102,241,0.03)',
+                    border: '1px solid rgba(99,102,241,0.1)',
                     borderRadius: 16, padding: '24px 28px',
                     position: 'relative', overflow: 'hidden'
                 }}>
-                    {/* Decorative glow */}
-                    <div style={{ position: 'absolute', top: -40, right: -40, width: 120, height: 120, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.15), transparent)', pointerEvents: 'none' }} />
                     
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                        <div style={{ width: 42, height: 42, borderRadius: 12, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', boxShadow: '0 4px 14px rgba(99,102,241,0.35)' }}>⚡</div>
+                        <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(99,102,241,0.1)', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem' }}>⚡</div>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--color-text)', fontWeight: 700 }}>Speed-to-Lead</h3>
                             <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Velocidad de respuesta a prospectos este mes</p>
@@ -440,20 +438,20 @@ export default function DashboardPage() {
                                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorUtilidad" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#34d399" stopOpacity={0.3} />
+                                            <stop offset="5%" stopColor="#34d399" stopOpacity={0.15} />
                                             <stop offset="95%" stopColor="#34d399" stopOpacity={0} />
                                         </linearGradient>
                                         <linearGradient id="colorIngresos" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.2} />
+                                            <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.1} />
                                             <stop offset="95%" stopColor="#60a5fa" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
                                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9096a8', fontSize: 12 }} dy={10} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9096a8', fontSize: 12 }} tickFormatter={(val) => `$${val / 1000}k`} />
                                     <Tooltip content={<CustomTooltip />} />
                                     <Area type="monotone" dataKey="Ingresos" stroke="#60a5fa" strokeWidth={2} fillOpacity={1} fill="url(#colorIngresos)" />
-                                    <Area type="monotone" dataKey="Utilidad" stroke="#34d399" strokeWidth={3} fillOpacity={1} fill="url(#colorUtilidad)" />
+                                    <Area type="monotone" dataKey="Utilidad" stroke="#34d399" strokeWidth={2} fillOpacity={1} fill="url(#colorUtilidad)" />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
@@ -486,7 +484,7 @@ export default function DashboardPage() {
                                         <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pr.producto}</div>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>👤 {pr.cliente}</div>
                                     </div>
-                                    <span className="badge" style={{ background: 'rgba(255,255,255,0.05)' }}>{pr.pax} und.</span>
+                                    <span className="badge" style={{ background: 'rgba(255,255,255,0.05)' }} title="Unidades/Cantidad">{pr.pax} und.</span>
                                 </div>
                             ))}
                         </div>
@@ -494,7 +492,7 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* ─── BOTTOM: TOP TOURS & RECENT LEADS ─── */}
+            {/* ─── BOTTOM: TOP PRODUCTOS & RECENT LEADS ─── */}
             <div className="dashboard-bottom" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px' }}>
                 <div className="glass-card" style={animStyle(600)}>
                     <h3 className="glass-card-title">🏆 Top 3 Productos Estrella</h3>

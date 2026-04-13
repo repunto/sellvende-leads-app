@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Mail, CheckCircle2, XCircle, Bot, MailCheck, Activity, AlertTriangle, Upload } from 'lucide-react';
 import '../styles/ActivityPage.css';
+import LeadXRayModal from '../components/activity/LeadXRayModal';
 
 export default function ActivityPage() {
     const [loading, setLoading] = useState(true);
@@ -61,7 +62,7 @@ export default function ActivityPage() {
 
                 let stepName = log.asunto || 'Paso Regular';
                 if (stepName.includes('aventura de tu vida')) stepName = 'Email 1: Bienvenida e Itinerario';
-                if (stepName.includes('Cotización')) stepName = 'Secuencia Original Salkantay (Manual/Antigua)';
+                if (stepName.includes('Cotización')) stepName = 'Secuencia Original (Manual/Antigua)';
 
                 if (!bd[producto]) bd[producto] = { total: 0, steps: {} };
                 bd[producto].total += 1;
@@ -188,7 +189,7 @@ export default function ActivityPage() {
         <div className="activity-page dashboard-pwa-container fade-in">
             <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <h1 className="page-title"><Activity className="icon-emerald glow-icon" size={28} /> Radar Elite</h1>
+                    <h1 className="page-title"><Activity className="icon-emerald glow-icon" size={28} /> Actividad Elite</h1>
                     <p className="page-subtitle">Comando central de operaciones de marketing y correos</p>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -447,46 +448,7 @@ export default function ActivityPage() {
 
             {/* X-Ray Inspector Modal */}
             {selectedLog && (
-                <div className="xray-modal-overlay fade-in" onClick={() => setSelectedLog(null)}>
-                    <div className="xray-modal-content slide-up" onClick={e => e.stopPropagation()}>
-                        <div className="xray-modal-header">
-                            <div>
-                                <h2>Inspección de Impacto (X-Ray)</h2>
-                                <p className="xray-meta">Registro ID: {selectedLog.id} • {new Date(selectedLog.created_at).toLocaleString()}</p>
-                            </div>
-                            <button className="xray-close-btn" onClick={() => setSelectedLog(null)}>✕</button>
-                        </div>
-                        <div className="xray-modal-body">
-                            <div className="xray-grid">
-                                <div className="xray-box">
-                                    <span className="xray-label">Destinatario</span>
-                                    <strong>{selectedLog.lead?.nombre} &lt;{selectedLog.lead?.email || selectedLog.email_enviado}&gt;</strong>
-                                </div>
-                                <div className="xray-box">
-                                    <span className="xray-label">Producto</span>
-                                    <strong>{selectedLog.lead?.producto_interes || 'N/A'}</strong>
-                                </div>
-                                <div className="xray-box">
-                                    <span className="xray-label">Canal del Servidor</span>
-                                    <strong>SMTP <span style={{ color: '#a78bfa' }}>(Gmail)</span></strong>
-                                </div>
-                                <div className="xray-box">
-                                    <span className="xray-label">Estado</span>
-                                    {selectedLog.estado === 'fallido' || selectedLog.estado === 'rebotado' ?
-                                        <div className="pill pill-failed">❌ {selectedLog.estado.toUpperCase()}</div>
-                                        : <div className="pill pill-success">✅ {selectedLog.estado.toUpperCase()}</div>
-                                    }
-                                </div>
-                            </div>
-                            {(selectedLog.estado === 'fallido' || selectedLog.estado === 'rebotado') && (
-                                <div className="xray-error-container">
-                                    <h3>Server Error Trace</h3>
-                                    <pre className="xray-error-code">{selectedLog.mensaje_error || selectedLog.asunto || 'Sin detalles de error disponibles.'}</pre>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                <LeadXRayModal logItem={selectedLog} onClose={() => setSelectedLog(null)} />
             )}
         </div>
     );

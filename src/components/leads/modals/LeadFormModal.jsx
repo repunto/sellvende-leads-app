@@ -181,7 +181,7 @@ export default function LeadFormModal({
                             <label style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>Estado *</label>
                             <select className="form-input" value={formData.estado || 'nuevo'}
                                 onChange={e => setFormData({ ...formData, estado: e.target.value })}>
-                                {['nuevo', 'contactado', 'cotizado', 'ventado'].map(st => (
+                                {['nuevo', 'contactado', 'cotizado', 'cliente'].map(st => (
                                     <option key={st} value={st}>{st.charAt(0).toUpperCase() + st.slice(1)}</option>
                                 ))}
                             </select>
@@ -208,12 +208,12 @@ export default function LeadFormModal({
                             </select>
                         </div>
                         <div>
-                            <label style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>Temporada de Viaje</label>
+                            <label style={{ display: 'block', marginBottom: 6, fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>Temporada / Prioridad</label>
                             <select className="form-input" value={formData.temporada || ''}
                                 onChange={e => setFormData({ ...formData, temporada: e.target.value })}>
                                 <option value="">No especificado</option>
-                                <option value="buena_temporada">Buena Temporada / Seca</option>
-                                <option value="temporada_lluvia">Temporada de Lluvias</option>
+                                <option value="alta">Temporada Alta / Corto Plazo</option>
+                                <option value="baja">Temporada Baja / Largo Plazo</option>
                             </select>
                         </div>
                     </div>

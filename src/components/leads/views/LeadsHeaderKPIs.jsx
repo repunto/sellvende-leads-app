@@ -8,7 +8,7 @@ import { timeAgo } from '../../../lib/utils'
  * No more local Array.filter() over thousands of leads.
  * 
  * Props:
- *  - kpis        : { total, nuevo, contactado, cotizado, ventado, frios, dado_de_baja }
+ *  - kpis        : { total, nuevo, contactado, cotizado, cliente, frios, dado_de_baja }
  *  - lastSync    : Date | null
  *  - setFiltroEstado : (estado: string) => void
  */
@@ -16,11 +16,11 @@ const LeadsHeaderKPIs = React.memo(({ kpis = {}, lastSync, setFiltroEstado }) =>
     const {
         total       = 0,
         nuevo       = 0,
-        ventado   = 0,
+        cliente   = 0,
         frios       = 0,
     } = kpis
 
-    const tasaConversion = total > 0 ? ((ventado / total) * 100).toFixed(1) : '0'
+    const tasaConversion = total > 0 ? ((cliente / total) * 100).toFixed(1) : '0'
 
     return (
         <>
@@ -41,7 +41,7 @@ const LeadsHeaderKPIs = React.memo(({ kpis = {}, lastSync, setFiltroEstado }) =>
                 {[
                     { label: 'Total Leads', value: total, icon: '👥', color: 'var(--color-accent)', bgColor: 'var(--color-accent-soft)', onClick: () => setFiltroEstado('') },
                     { label: 'Sin Contactar', value: nuevo, icon: '✨', color: 'var(--color-info)', bgColor: 'var(--color-info-soft)', onClick: () => setFiltroEstado('nuevo') },
-                    { label: 'Conversión', value: `${tasaConversion}%`, icon: '🎯', color: 'var(--color-success)', bgColor: 'var(--color-success-soft)', onClick: () => setFiltroEstado('ventado') },
+                    { label: 'Conversión', value: `${tasaConversion}%`, icon: '🎯', color: 'var(--color-success)', bgColor: 'var(--color-success-soft)', onClick: () => setFiltroEstado('cliente') },
                     { label: 'Leads Fríos', value: frios, icon: '🧊', color: 'var(--color-warning)', bgColor: 'var(--color-warning-soft)', onClick: () => setFiltroEstado('frios') },
                 ].map((kpi, i) => (
                     <div

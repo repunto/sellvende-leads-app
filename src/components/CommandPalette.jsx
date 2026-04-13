@@ -10,7 +10,7 @@ const STATIC_ACTIONS = [
     { id: 'nav-ventas', type: 'navegacion', title: 'Ir a Ventas', icon: <Ticket size={18} />, path: '/ventas' },
     { id: 'nav-calendario', type: 'navegacion', title: 'Ir a Calendario', icon: <CalendarDays size={18} />, path: '/calendario' },
     { id: 'nav-marketing', type: 'navegacion', title: 'Ir a Marketing ROI', icon: <TrendingUp size={18} />, path: '/marketing' },
-    { id: 'nav-radar', type: 'navegacion', title: 'Ir a Radar de Actividad', icon: <Activity size={18} />, path: '/actividad' },
+    { id: 'nav-actividad', type: 'navegacion', title: 'Ir a Actividad', icon: <Activity size={18} />, path: '/actividad' },
     { id: 'nav-configuracion', type: 'navegacion', title: 'Configuración', icon: <Settings size={18} />, path: '/configuracion' }
 ]
 

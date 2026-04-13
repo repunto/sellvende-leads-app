@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import ConfirmModal from '../components/leads/modals/ConfirmModal'
-
+import PlantillasTab from './configuracion/tabs/PlantillasTab'
+import PlantillasWhatsAppTab from './configuracion/tabs/PlantillasWhatsAppTab'
 const TIPOS_LABELS = {
     lead_primer_contacto: '1. Primer Contacto',
     lead_seguimiento: '2. Seguimiento',
@@ -460,6 +461,18 @@ export default function MarketingPage() {
                     onClick={() => setActiveTab('secuencias')}
                 >
                     📫 Secuencias de Emails (Drips)
+                </button>
+                <button
+                    className={`tab ${activeTab === 'plantillas_email' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('plantillas_email')}
+                >
+                    ✉️ Plantillas Email
+                </button>
+                <button
+                    className={`tab ${activeTab === 'plantillas_wa' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('plantillas_wa')}
+                >
+                    📲 Plantillas WhatsApp
                 </button>
                 <button
                     className={`tab ${activeTab === 'roas' ? 'active' : ''}`}
@@ -934,6 +947,14 @@ export default function MarketingPage() {
                         </div>
                     )}
                 </div>
+            )}
+
+            {activeTab === 'plantillas_email' && (
+                <PlantillasTab showToast={showToast} agencia={agencia} />
+            )}
+
+            {activeTab === 'plantillas_wa' && (
+                <PlantillasWhatsAppTab showToast={showToast} agencia={agencia} />
             )}
 
         </div>

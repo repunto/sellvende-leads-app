@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-const ESTADOS = ['nuevo', 'contactado', 'cotizado', 'ventado']
+const ESTADOS = ['nuevo', 'contactado', 'cotizado', 'cliente']
 
 const LeadsToolbar = React.memo(({
     search, setSearch, 

@@ -5,6 +5,7 @@
    ========================================== */
 
 :root {
+  color-scheme: dark;
   /* Colors — Warm earth tones inspired by Andean textiles */
   --color-bg: #0f1117;
   --color-bg-card: #1a1d27;
@@ -524,7 +525,7 @@ a:hover {
   color: var(--color-accent);
 }
 
-.badge-ventado,
+.badge-cliente,
 .badge-confirmada {
   background: var(--color-success-soft);
   color: var(--color-success);
@@ -543,6 +544,11 @@ a:hover {
 .badge-cancelada {
   background: var(--color-danger-soft);
   color: var(--color-danger);
+}
+
+.badge-correo_falso {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
 }
 
 /* Forms */
@@ -1327,7 +1333,6 @@ a:hover {
 
 .kpi-card-value.success {
   color: var(--color-success);
-  text-shadow: 0 2px 10px rgba(52, 211, 153, 0.2);
 }
 
 .kpi-card-sub {
@@ -1336,10 +1341,10 @@ a:hover {
   margin-top: 8px;
 }
 
-/* Glass variant for special KPIs */
+/* Standard variant for special KPIs */
 .kpi-card-hero {
-  background: linear-gradient(135deg, rgba(52, 211, 153, 0.1) 0%, rgba(34, 37, 53, 0.6) 100%);
-  border: 1px solid rgba(52, 211, 153, 0.2);
+  background: rgba(52, 211, 153, 0.05);
+  border: 1px solid rgba(52, 211, 153, 0.15);
 }
 
 /* ==========================================
@@ -1405,6 +1410,27 @@ a:hover {
   to { background-position: -200% 0; }
 }
 
+/* ==========================================
+   EMPTY STATES
+   ========================================== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.empty-state-text {
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-top: 8px;
+}
 /* ==========================================
    GLOBAL SCROLLBAR
    ========================================== */

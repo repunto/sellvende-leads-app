@@ -126,7 +126,7 @@ export function useVentasData({ agencia, showToast, setConfirmDialog }) {
     // ─────────────────────────────────────────────────────
     // FORM OPEN / CLOSE
     // ─────────────────────────────────────────────────────
-    const openForm = useCallback((venta = null) => {
+    const openForm = useCallback((venta = null, prefillLead = null) => {
         if (venta) {
             setEditingVenta(venta)
             setFormData({
@@ -148,7 +148,16 @@ export function useVentasData({ agencia, showToast, setConfirmDialog }) {
             })
         } else {
             setEditingVenta(null)
-            setFormData({ ...EMPTY_FORM, agencia_id: agencia?.id })
+            setFormData({
+                ...EMPTY_FORM,
+                agencia_id: agencia?.id,
+                ...(prefillLead ? {
+                    lead_id: prefillLead.id || '',
+                    cliente_nombre: prefillLead.nombre || '',
+                    cliente_email: prefillLead.email || '',
+                    cliente_telefono: prefillLead.telefono || '',
+                } : {})
+            })
         }
         setShowForm(true)
     }, [agencia?.id])
@@ -174,6 +183,14 @@ export function useVentasData({ agencia, showToast, setConfirmDialog }) {
                 const { data: newRes, error: err2 } = await supabase.from('ventas').insert([masterPayload]).select('id').single()
                 if (err2) throw err2
                 ventaId = newRes.id
+
+                // NEW: If this sale comes from a lead, move the lead to "cliente" status
+                if (masterPayload.lead_id) {
+                    await supabase.from('leads').update({
+                        estado: 'cliente',
+                        ultimo_contacto: new Date().toISOString()
+                    }).eq('id', masterPayload.lead_id)
+                }
             }
 
             const validProductos = productos_list.filter(t => t.producto_id)
@@ -419,8 +436,8 @@ export function useVentasData({ agencia, showToast, setConfirmDialog }) {
                 const fechasList = venta.venta_productos?.map(rt => rt.fecha_servicio ? new Date(rt.fecha_servicio).toLocaleDateString('es-PE') : '').filter(Boolean) || []
                 const fechaStr   = fechasList.length > 0 ? Array.from(new Set(fechasList)).join(', ') : 'fecha por confirmar'
                 const fallback   = destinatario === 'cliente'
-                    ? `Hola ${venta.cliente_nombre}, te escribimos para confirmar tu venta del producto ${productosNames} para el ${fechaStr}. ¡Nos vemos pronto!`
-                    : `Nueva venta:\nProducto: ${productosNames}\nFecha: ${fechaStr}\nPax: ${venta.pax}\nSaldo a cobrar: $${(parseFloat(venta.precio_venta || 0) - parseFloat(venta.adelanto || 0)).toFixed(2)}`
+                    ? `🎉 ¡Nueva venta online!\n\nProducto: ${productosNames}\nFecha: ${fechaStr}\nCant.: ${venta.pax}\nTotal pagado: $${parseFloat(venta.adelanto || 0).toFixed(2)}\nSaldo a cobrar: $${(parseFloat(venta.precio_venta || 0) - parseFloat(venta.adelanto || 0)).toFixed(2)}\nID Transacción: ${venta.id_transaccion}`
+                    : `Nueva venta:\nProducto: ${productosNames}\nFecha: ${fechaStr}\nCant.: ${venta.pax}\nSaldo a cobrar: $${(parseFloat(venta.precio_venta || 0) - parseFloat(venta.adelanto || 0)).toFixed(2)}`
                 setCommPreview(fallback)
             }
         } catch (err) {

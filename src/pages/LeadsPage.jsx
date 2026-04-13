@@ -43,8 +43,7 @@ import { LEADS_PER_PAGE } from '../hooks/useMetaSync'
 const KANBAN_COLS = [
     { estado: 'nuevo',      label: 'Nuevo',      color: '#3b82f6', icon: '✨' },
     { estado: 'contactado', label: 'Contactado',  color: '#eab308', icon: '📞' },
-    { estado: 'cotizado',   label: 'Cotizado',    color: '#f97316', icon: '💰' },
-    { estado: 'ventado',  label: 'Ventado',   color: '#10b981', icon: '✅' },
+    { estado: 'cliente',  label: 'Cliente',   color: '#10b981', icon: '✅' },
 ]
 const badgeClass = (estado) => `badge badge-${estado}`
 
@@ -519,7 +518,7 @@ export default function LeadsPage() {
         let tipoBuscado = 'lead_primer_contacto'
         if (lead.estado === 'contactado') tipoBuscado = 'lead_seguimiento'
         if (lead.estado === 'cotizado')   tipoBuscado = 'cotizacion'
-        if (lead.estado === 'ventado')  tipoBuscado = 'confirmacion'
+        if (lead.estado === 'cliente')  tipoBuscado = 'confirmacion'
         const idiomaLead = lead.idioma === 'EN' ? 'EN' : 'ES'
 
         let template = waTemplates.find(t =>
@@ -573,7 +572,7 @@ export default function LeadsPage() {
             .replace(/{personas}/gi, lead.personas || '')
             .replace(/{temporada}/gi, formatTemporada(lead.temporada))
             .replace(/{fecha}/gi, formatTemporada(lead.temporada))
-            .replace(/{fechaviaje}/gi, formatTemporada(lead.temporada))
+            .replace(/\{(fechaviaje|fecha_entrega)\}/gi, formatTemporada(lead.temporada))
             .replace(/{pax}/gi, lead.personas || '')
             .replace(/{telefono}/gi, configs.whatsapp || configs.telefono_agencia || '')
             .replace(/{email}/gi, configs.email_contacto || '')

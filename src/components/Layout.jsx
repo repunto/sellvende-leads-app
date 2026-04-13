@@ -1,25 +1,30 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { usePlan } from '../hooks/usePlan'
 import CommandPalette from './CommandPalette'
 import { supabase } from '../lib/supabase'
 
-import { LayoutDashboard, Users, ShoppingCart, CalendarDays, Package, Gift, Tag, BarChart2, Users as UsersIcon, Settings, LogOut, Activity, DollarSign, CreditCard } from 'lucide-react'
+import { LayoutDashboard, Users, ShoppingCart, CalendarDays, Package, Gift, Tag, BarChart2, Users as UsersIcon, Settings, LogOut, Activity, DollarSign, CreditCard, ChevronDown, ChevronRight } from 'lucide-react'
 
 const navItems = [
     { path: '/', icon: <LayoutDashboard size={20} strokeWidth={2.5} />, label: 'Dashboard' },
     { path: '/leads', icon: <Users size={20} strokeWidth={2.5} />, label: 'Leads' },
     { path: '/ventas', icon: <ShoppingCart size={20} strokeWidth={2.5} />, label: 'Ventas' },
     { path: '/calendario', icon: <CalendarDays size={20} strokeWidth={2.5} />, label: 'Calendario' },
-    { path: '/actividad', icon: <Activity size={20} strokeWidth={2.5} />, label: 'Radar' },
+    { path: '/actividad', icon: <Activity size={20} strokeWidth={2.5} />, label: 'Actividad' },
 ]
 
 const configItems = [
     { path: '/analytics', icon: <BarChart2 size={20} strokeWidth={2.5} />, label: 'Analítica y ROI' },
     { path: '/finanzas', icon: <DollarSign size={20} strokeWidth={2.5} />, label: 'Finanzas & ROAS' },
-    { path: '/productos', icon: <Package size={20} strokeWidth={2.5} />, label: 'Productos' },
-    { path: '/extras', icon: <Gift size={20} strokeWidth={2.5} />, label: 'Extras / Up-sells' },
-    { path: '/descuentos', icon: <Tag size={20} strokeWidth={2.5} />, label: 'Descuentos' },
+    { 
+        path: '/productos', icon: <Package size={20} strokeWidth={2.5} />, label: 'Productos',
+        subItems: [
+            { path: '/extras', icon: <Gift size={18} strokeWidth={2.5} />, label: 'Extras / Up-sells' },
+            { path: '/descuentos', icon: <Tag size={18} strokeWidth={2.5} />, label: 'Descuentos' }
+        ]
+    },
     { path: '/marketing', icon: <Activity size={20} strokeWidth={2.5} />, label: 'Automatización Email' },
     { path: '/asesores', icon: <UsersIcon size={20} strokeWidth={2.5} />, label: 'Equipo Comercial' },
     { path: '/configuracion', icon: <Settings size={20} strokeWidth={2.5} />, label: 'Configuración' },
@@ -28,9 +33,22 @@ const configItems = [
 
 export default function Layout({ children }) {
     const { user, agencia, rol, signOut } = useAuth()
+    const { isExpired } = usePlan()
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [nombreVisible, setNombreVisible] = useState('')
     const location = useLocation()
+
+    // Control menu expansion
+    const [expandedMenus, setExpandedMenus] = useState({})
+
+    useEffect(() => {
+        // Auto expand if a sub-item matches current location
+        configItems.forEach(item => {
+            if (item.subItems && item.subItems.some(sub => location.pathname.startsWith(sub.path))) {
+                setExpandedMenus(prev => ({ ...prev, [item.path]: true }))
+            }
+        })
+    }, [location.pathname])
 
     useEffect(() => {
         if (!agencia?.id) return
@@ -119,25 +137,68 @@ export default function Layout({ children }) {
                     ))}
 
                     <div className="sidebar-section-label">Administración</div>
-                    {configItems.map(item => (
-                        <NavLink
-                            key={item.path}
-                            to={item.path}
-                            onClick={closeSidebar}
-                            className={({ isActive }) =>
-                                `sidebar-link ${isActive ? 'active' : ''}`
-                            }
-                            style={({ isActive }) => isActive ? {
-                                background: 'linear-gradient(90deg, var(--color-accent-soft) 0%, rgba(224, 122, 79, 0) 100%)',
-                                borderLeft: '3px solid var(--color-accent)',
-                                paddingLeft: '9px',
-                                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)'
-                            } : { borderLeft: '3px solid transparent', paddingLeft: '9px' }}
-                        >
-                            <span className="sidebar-link-icon">{item.icon}</span>
-                            {item.label}
-                        </NavLink>
-                    ))}
+                    {configItems.map(item => {
+                        const isActive = location.pathname.startsWith(item.path) && item.path !== '/'
+                        const hasSubItems = item.subItems && item.subItems.length > 0
+                        const isExpanded = expandedMenus[item.path]
+
+                        return (
+                            <div key={item.path}>
+                                <NavLink
+                                    to={item.path}
+                                    onClick={(e) => {
+                                        if (hasSubItems) {
+                                            // Optional: Don't prevent default if we want to navigate to /productos as well.
+                                            // But toggling should work here.
+                                            setExpandedMenus(prev => ({ ...prev, [item.path]: !isExpanded }))
+                                        } else {
+                                            closeSidebar()
+                                        }
+                                    }}
+                                    className={`sidebar-link ${isActive ? 'active' : ''}`}
+                                    style={isActive ? {
+                                        background: 'linear-gradient(90deg, var(--color-accent-soft) 0%, rgba(224, 122, 79, 0) 100%)',
+                                        borderLeft: '3px solid var(--color-accent)',
+                                        paddingLeft: '9px',
+                                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)'
+                                    } : { borderLeft: '3px solid transparent', paddingLeft: '9px' }}
+                                >
+                                    <span className="sidebar-link-icon">{item.icon}</span>
+                                    <span style={{ flex: 1 }}>{item.label}</span>
+                                    {hasSubItems && (
+                                        <span style={{ opacity: 0.6 }}>
+                                            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                        </span>
+                                    )}
+                                </NavLink>
+
+                                {hasSubItems && isExpanded && (
+                                    <div style={{ paddingLeft: '32px', marginTop: '2px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                        {item.subItems.map(subItem => {
+                                            const isSubActive = location.pathname.startsWith(subItem.path)
+                                            return (
+                                                <NavLink
+                                                    key={subItem.path}
+                                                    to={subItem.path}
+                                                    onClick={closeSidebar}
+                                                    className={`sidebar-link ${isSubActive ? 'active' : ''}`}
+                                                    style={isSubActive ? {
+                                                        background: 'transparent',
+                                                        color: 'var(--color-accent)',
+                                                        paddingLeft: '12px',
+                                                        fontSize: '0.85rem'
+                                                    } : { paddingLeft: '12px', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}
+                                                >
+                                                    <span className="sidebar-link-icon" style={{ width: '18px' }}>{subItem.icon}</span>
+                                                    {subItem.label}
+                                                </NavLink>
+                                            )
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    })}
                 </nav>
 
                 <div className="sidebar-footer">

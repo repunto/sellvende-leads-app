@@ -62,7 +62,7 @@ const PdfVoucher = forwardRef(({ venta, agencia }, ref) => {
                                 </h1>
                             )}
                             <div style={{ fontSize: '12px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '2px' }}>
-                                Luxury Travel Confirmation
+                                Order Confirmation / Recibo Comercial
                             </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
@@ -85,30 +85,30 @@ const PdfVoucher = forwardRef(({ venta, agencia }, ref) => {
                     {/* Welcome Section */}
                     <div style={{ marginBottom: '50px' }}>
                         <h2 style={{ fontSize: '32px', fontWeight: 800, margin: '0 0 12px 0', color: '#111827', letterSpacing: '-0.5px' }}>
-                            Prepare for your adventure, {lead.nombre || 'Traveler'}
+                            Gracias por tu confianza, {lead.nombre || 'Cliente'}
                         </h2>
                         <p style={{ fontSize: '18px', color: '#4b5563', margin: 0, fontWeight: 400, lineHeight: 1.6 }}>
-                            Your journey with <strong>{agenciaNombre}</strong> has been meticulously planned. Below are your official confirmation details.
+                            Tu orden con <strong>{agenciaNombre}</strong> ha sido registrada. A continuación revisa los detalles.
                         </p>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '50px', marginBottom: '50px' }}>
                         {/* Left column: Experience Details */}
                         <div style={{ padding: '24px', backgroundColor: '#f9fafb', borderRadius: '16px', borderLeft: '4px solid #fbbf24' }}>
-                            <h3 style={{ fontSize: '11px', textTransform: 'uppercase', color: '#6b7280', fontWeight: 800, letterSpacing: '1.5px', marginBottom: '20px' }}>Experience Details</h3>
+                            <h3 style={{ fontSize: '11px', textTransform: 'uppercase', color: '#6b7280', fontWeight: 800, letterSpacing: '1.5px', marginBottom: '20px' }}>Detalles del Servicio</h3>
                             
                             <div style={{ marginBottom: '24px' }}>
-                                <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '6px', fontWeight: 600 }}>PRIVATE TOUR</div>
-                                <div style={{ fontSize: '20px', fontWeight: 800, color: '#111827' }}>{venta.producto?.nombre || lead.producto_interes || 'Exclusive Experience'}</div>
+                                <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '6px', fontWeight: 600 }}>PRODUCTO / SERVICIO</div>
+                                <div style={{ fontSize: '20px', fontWeight: 800, color: '#111827' }}>{venta.producto?.nombre || lead.producto_interes || 'Descripción General'}</div>
                             </div>
                             
                             <div style={{ marginBottom: '24px', display: 'flex', gap: '30px' }}>
                                 <div>
-                                    <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px', fontWeight: 600 }}>DEPARTURE DATE</div>
+                                    <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px', fontWeight: 600 }}>FECHA DE ENTREGA / EJECUCIÓN</div>
                                     <div style={{ fontSize: '16px', fontWeight: 700, color: '#374151' }}>{fechaProducto}</div>
                                 </div>
                                 <div>
-                                    <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px', fontWeight: 600 }}>GUESTS</div>
+                                    <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px', fontWeight: 600 }}>CANTIDAD</div>
                                     <div style={{ fontSize: '16px', fontWeight: 700, color: '#374151' }}>{venta.pax || lead.personas || 1} Und.</div>
                                 </div>
                             </div>
@@ -116,11 +116,11 @@ const PdfVoucher = forwardRef(({ venta, agencia }, ref) => {
 
                         {/* Right column: Contact Details */}
                         <div style={{ padding: '24px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
-                            <h3 style={{ fontSize: '11px', textTransform: 'uppercase', color: '#6b7280', fontWeight: 800, letterSpacing: '1.5px', marginBottom: '20px' }}>Passenger of Record</h3>
+                            <h3 style={{ fontSize: '11px', textTransform: 'uppercase', color: '#6b7280', fontWeight: 800, letterSpacing: '1.5px', marginBottom: '20px' }}>Datos del Cliente</h3>
                             
                             <div style={{ marginBottom: '24px' }}>
-                                <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px', fontWeight: 600 }}>FULL NAME</div>
-                                <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827' }}>{lead.nombre || venta.cliente_nombre || 'Guest'}</div>
+                                <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px', fontWeight: 600 }}>NOMBRE / RAZÓN SOCIAL</div>
+                                <div style={{ fontSize: '18px', fontWeight: 700, color: '#111827' }}>{lead.nombre || venta.cliente_nombre || 'Cliente'}</div>
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
@@ -139,16 +139,16 @@ const PdfVoucher = forwardRef(({ venta, agencia }, ref) => {
                     {/* Financial Summary - Modern Table Style */}
                     <div style={{ border: '1px solid #e5e7eb', borderRadius: '20px', overflow: 'hidden', marginBottom: '50px' }}>
                         <div style={{ backgroundColor: '#f9fafb', padding: '15px 30px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: '12px', fontWeight: 800, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px' }}>Financial Statement</span>
-                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#9ca3af' }}>All prices in USD</span>
+                            <span style={{ fontSize: '12px', fontWeight: 800, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px' }}>Resumen Financiero</span>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#9ca3af' }}>Moneda local / USD</span>
                         </div>
                         <div style={{ padding: '30px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                                <span style={{ color: '#4b5563', fontSize: '16px' }}>Total Package Value</span>
+                                <span style={{ color: '#4b5563', fontSize: '16px' }}>Valor Total de la Orden</span>
                                 <span style={{ fontSize: '18px', fontWeight: 700, color: '#111827' }}>${Number(venta.total_venta || venta.precio_venta || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                                <span style={{ color: '#4b5563', fontSize: '16px' }}>Deposit Received</span>
+                                <span style={{ color: '#4b5563', fontSize: '16px' }}>Adelanto / Pago Previo</span>
                                 <span style={{ fontSize: '18px', fontWeight: 700, color: '#10b981' }}>- ${Number(venta.adelanto || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                             </div>
                             
@@ -156,8 +156,8 @@ const PdfVoucher = forwardRef(({ venta, agencia }, ref) => {
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
-                                    <div style={{ fontSize: '22px', fontWeight: 900, color: '#111827' }}>Balance Payable</div>
-                                    <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: 700, textTransform: 'uppercase' }}>To be settled upon arrival</div>
+                                    <div style={{ fontSize: '22px', fontWeight: 900, color: '#111827' }}>Saldo Pendiente</div>
+                                    <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: 700, textTransform: 'uppercase' }}>A pagar según condiciones acordadas</div>
                                 </div>
                                 <div style={{ fontSize: '36px', fontWeight: 900, color: '#ef4444' }}>
                                     ${saldoPendiente.toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -174,11 +174,11 @@ const PdfVoucher = forwardRef(({ venta, agencia }, ref) => {
                         <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                                 <div style={{ width: '8px', height: '8px', backgroundColor: '#10b981', borderRadius: '50%' }}></div>
-                                <span style={{ fontSize: '12px', fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '1px' }}>24/7 Premium Support</span>
+                                <span style={{ fontSize: '12px', fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '1px' }}>Soporte Comercial 24/7</span>
                             </div>
-                            <h3 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '10px', color: '#ffffff' }}>Your Concierge is Ready</h3>
+                            <h3 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '10px', color: '#ffffff' }}>Estamos para ayudarte</h3>
                             <p style={{ fontSize: '15px', color: '#94a3b8', margin: '0 0 15px 0', lineHeight: '1.6', fontWeight: 400 }}>
-                                Scan this code with your phone to instantly connect with our elite support team via WhatsApp. We are here to ensure your trip is perfect.
+                                Escanea este código con tu teléfono para conectar al instante con nuestro equipo de soporte por WhatsApp. Comprometidos con tu éxito.
                             </p>
                             <div style={{ fontSize: '16px', fontWeight: 700, color: '#fbbf24' }}>
                                 WhatsApp Support: {agenciaTelefono}
@@ -191,9 +191,9 @@ const PdfVoucher = forwardRef(({ venta, agencia }, ref) => {
                 {/* Footer */}
                 <div style={{ padding: '30px 60px', borderTop: '1px solid #f3f4f6', textAlign: 'center' }}>
                     <div style={{ fontSize: '12px', color: '#9ca3af', letterSpacing: '0.5px', lineHeight: 1.8 }}>
-                        This is an official travel confirmation issued by <strong>{agenciaNombre}</strong>. <br/>
-                        Terms and conditions apply. Please present this document during your check-in. <br/>
-                        © {new Date().getFullYear()} {agenciaNombre} Luxury Travel Agency.
+                        Este es un documento oficial y no representa una factura fiscal, a menos que se exprese lo contrario. <br/>
+                        Emitido por <strong>{agenciaNombre}</strong>. Aplican términos y condiciones. <br/>
+                        © {new Date().getFullYear()} {agenciaNombre} Comercial.
                     </div>
                 </div>
 

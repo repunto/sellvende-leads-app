@@ -25,7 +25,7 @@ export default function IndividualEmailModal({
         .replace(/\{producto\}/gi, lead.producto_interes || 'el producto')
         .replace(/\{Agencia\}/gi, agencia?.nombre || 'Nuestra Agencia')
         .replace(/\{agencia\}/gi, agencia?.nombre || 'Nuestra Agencia')
-        .replace(/\{FechaViaje\}/gi, lead.temporada || '')
+        .replace(/\{(FechaViaje|fecha_entrega)\}/gi, lead.temporada || '')
         .replace(/\{telefono\}/gi, configs?.telefono_agencia || configs?.whatsapp || '')
         .replace(/\{social_proof\}/gi, '')
 

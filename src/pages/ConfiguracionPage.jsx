@@ -5,8 +5,6 @@ import { TABS } from './configuracion/constants'
 // Tabs
 import AgenciaTab from './configuracion/tabs/AgenciaTab'
 import IntegracionesTab from './configuracion/tabs/IntegracionesTab'
-import PlantillasTab from './configuracion/tabs/PlantillasTab'
-import PlantillasWhatsAppTab from './configuracion/tabs/PlantillasWhatsAppTab'
 import BackupTab from './configuracion/tabs/BackupTab'
 import SeedTab from './configuracion/tabs/SeedTab'
 
@@ -50,8 +48,6 @@ export default function ConfiguracionPage() {
                 {/* Tab Content */}
                 {activeTab === 'agencia' && <AgenciaTab showToast={showToast} agencia={agencia} />}
                 {activeTab === 'integraciones' && <IntegracionesTab showToast={showToast} agencia={agencia} />}
-                {activeTab === 'plantillas' && <PlantillasTab showToast={showToast} agencia={agencia} />}
-                {activeTab === 'whatsapp' && <PlantillasWhatsAppTab showToast={showToast} agencia={agencia} />}
                 {activeTab === 'backup' && <BackupTab showToast={showToast} agencia={agencia} />}
                 {activeTab === 'seed' && <SeedTab showToast={showToast} />}
             </div>

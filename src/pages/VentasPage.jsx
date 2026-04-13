@@ -71,12 +71,30 @@ export default function VentasPage() {
     // ─────────────────────────────────────────────────────
     useEffect(() => {
         loadData()
-        if (location.state?.nuevaVenta) {
-            openForm(null)
-            navigate(location.pathname, { replace: true, state: {} })
+        
+        let shouldClearState = false
+        if (location.state?.convertLead) {
+            // Need a slight timeout to ensure React doesn't batch this and lose the showForm=true state
+            // when navigating away to clear the location.state
+            setTimeout(() => {
+                openForm(null, location.state.convertLead)
+            }, 50)
+            shouldClearState = true
+        } else if (location.state?.nuevaVenta) {
+            setTimeout(() => {
+                openForm(null)
+            }, 50)
+            shouldClearState = true
+        }
+
+        if (shouldClearState) {
+            // Delay clearing the route state to avoid double-firing loadData in the same render cycle
+            setTimeout(() => {
+                navigate(location.pathname, { replace: true, state: {} })
+            }, 100)
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [location.state, location.pathname, navigate])
+    }, [location.state?.convertLead, location.state?.nuevaVenta, location.pathname, navigate])
 
     // ─────────────────────────────────────────────────────
     // FILTER + PAGINATION

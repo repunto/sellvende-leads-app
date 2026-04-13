@@ -1,6 +1,6 @@
 -- ====================================================================================
 -- FIX: get_leads_kpis and get_leads_page still reference estado='reservado'
--- The correct B2B state is 'ventado'. Fixed to match frontend terminology.
+-- The correct B2B state is 'cliente'. Fixed to match frontend terminology.
 -- ====================================================================================
 
 -- 1. FIX get_leads_kpis
@@ -17,11 +17,11 @@ BEGIN
         'nuevo',        COUNT(*) FILTER (WHERE estado = 'nuevo'),
         'contactado',   COUNT(*) FILTER (WHERE estado = 'contactado'),
         'cotizado',     COUNT(*) FILTER (WHERE estado = 'cotizado'),
-        'ventado',      COUNT(*) FILTER (WHERE estado = 'ventado'),
+        'cliente',      COUNT(*) FILTER (WHERE estado = 'cliente'),
         'frios',        COUNT(*) FILTER (
                             WHERE ultimo_contacto IS NOT NULL
                             AND ultimo_contacto < NOW() - INTERVAL '7 days'
-                            AND estado NOT IN ('ventado', 'dado_de_baja')
+                            AND estado NOT IN ('cliente', 'dado_de_baja')
                         ),
         'dado_de_baja', COUNT(*) FILTER (WHERE unsubscribed = TRUE)
     )
@@ -104,7 +104,7 @@ BEGIN
                   WHEN 'frios' THEN (
                       l.ultimo_contacto IS NOT NULL AND
                       l.ultimo_contacto < NOW() - INTERVAL '7 days' AND
-                      l.estado NOT IN ('ventado', 'dado_de_baja')
+                      l.estado NOT IN ('cliente', 'dado_de_baja')
                   )
                   WHEN 'dado_de_baja' THEN l.unsubscribed = TRUE
                   ELSE l.estado = p_estado

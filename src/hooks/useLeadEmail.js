@@ -28,7 +28,7 @@ function buildEmailContent({ rawHtml, rawSubject, lead, config, agencyName, send
         .replace(/{telefono}/gi, config['telefono_agencia'] || config['whatsapp'] || '')
         .replace(/{agencia}/gi, agencyName)
         .replace(/{remitente}/gi, senderName || agencyName)
-        .replace(/{fechaviaje}/gi, formatTemporada(lead.temporada))
+        .replace(/\{(fechaviaje|fecha_entrega)\}/gi, formatTemporada(lead.temporada))
         .replace(/{fecha}/gi, formatTemporada(lead.temporada))
         .replace(/{mesagotado}/gi, mesAgotado)
         .replace(/{social_proof}/gi, socialProof)
@@ -36,7 +36,7 @@ function buildEmailContent({ rawHtml, rawSubject, lead, config, agencyName, send
     const subject = rawSubject
         .replace(/{nombre}/gi, lead.nombre || '')
         .replace(/{producto}/gi, activeProductoName)
-        .replace(/{fechaviaje}/gi, formatTemporada(lead.temporada))
+        .replace(/\{(fechaviaje|fecha_entrega)\}/gi, formatTemporada(lead.temporada))
         .replace(/{fecha}/gi, formatTemporada(lead.temporada))
         .replace(/{mesagotado}/gi, mesAgotado)
         .replace(/{agencia}/gi, agencyName)
@@ -88,7 +88,7 @@ export function useLeadEmail({
         let tipoBuscado = 'Agradecimiento / Bienvenida'
         if (lead.estado === 'contactado') tipoBuscado = 'Seguimiento'
         if (lead.estado === 'cotizado') tipoBuscado = 'Cotización'
-        if (lead.estado === 'ventado') tipoBuscado = 'Itinerario / Voucher'
+        if (lead.estado === 'cliente') tipoBuscado = 'Itinerario / Voucher'
         const idiomaLead = lead.idioma === 'EN' ? 'EN' : 'ES'
         let template = null
         if (lead.producto_interes) {
