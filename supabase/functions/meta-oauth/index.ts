@@ -28,10 +28,8 @@ serve(async (req) => {
         const appId = Deno.env.get('META_APP_ID')
         const appSecret = Deno.env.get('META_APP_SECRET')
         
-        console.log('[meta-oauth] Secrets:', { appId: appId ? 'OK' : 'MISSING', appSecret: appSecret ? 'OK' : 'MISSING' })
-        
         if (!appId || !appSecret) {
-            return new Response(JSON.stringify({ error: 'Las credenciales Meta (App ID y Secret) no están configuradas en el servidor.' }), {
+            return new Response(JSON.stringify({ error: 'Las credenciales Meta no están configuradas en el servidor.' }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400,
             })
         }
@@ -47,61 +45,66 @@ serve(async (req) => {
         const exRes = await fetch(exchangeUrl)
         const exData = await exRes.json()
         
-        console.log('[meta-oauth] Exchange response:', JSON.stringify(exData))
-        
         if (exData.error) {
             return new Response(JSON.stringify({ error: 'Error al intercambiar token: ' + exData.error.message }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400,
             })
         }
         
-        const longLivedUserToken = exData.access_token
+        const userToken = exData.access_token
+        const allPages: Array<{id: string, name: string, access_token: string, category?: string}> = []
 
-        // 2. Check what permissions this token actually has
-        const permsRes = await fetch(`https://graph.facebook.com/v19.0/me/permissions?access_token=${longLivedUserToken}`)
-        const permsData = await permsRes.json()
-        console.log('[meta-oauth] Token permissions:', JSON.stringify(permsData))
-
-        // 3. Check who this token belongs to
-        const meRes = await fetch(`https://graph.facebook.com/v19.0/me?fields=id,name&access_token=${longLivedUserToken}`)
-        const meData = await meRes.json()
-        console.log('[meta-oauth] Token owner:', JSON.stringify(meData))
-
-        // 4. Fetch user's pages
-        const pagesRes = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${longLivedUserToken}`)
-        const pagesData = await pagesRes.json()
-        console.log('[meta-oauth] Pages raw response:', JSON.stringify(pagesData))
+        // 2. Try standard me/accounts (pages with direct personal role)
+        const accountsRes = await fetch(`https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token,category&limit=50&access_token=${userToken}`)
+        const accountsData = await accountsRes.json()
+        console.log('[meta-oauth] me/accounts:', JSON.stringify(accountsData))
         
-        if (pagesData.error) {
-            return new Response(JSON.stringify({ 
-                error: 'Error al listar páginas: ' + pagesData.error.message,
-                debug: { permissions: permsData, owner: meData }
-            }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400,
-            })
+        if (accountsData.data && accountsData.data.length > 0) {
+            allPages.push(...accountsData.data)
         }
-        
-        const pages = pagesData.data || []
-        
-        // If empty, return debug info to help diagnose
-        if (pages.length === 0) {
-            const grantedPerms = (permsData.data || []).filter((p: {status: string}) => p.status === 'granted').map((p: {permission: string}) => p.permission)
-            return new Response(JSON.stringify({ 
-                pages: [],
-                debug: {
-                    owner: meData,
-                    granted_permissions: grantedPerms,
-                    has_pages_show_list: grantedPerms.includes('pages_show_list'),
+
+        // 3. Also try Business Portfolio pages (for pages managed via Meta Business Suite)
+        const businessRes = await fetch(`https://graph.facebook.com/v19.0/me/businesses?fields=id,name,owned_pages{id,name,access_token,category}&limit=10&access_token=${userToken}`)
+        const businessData = await businessRes.json()
+        console.log('[meta-oauth] me/businesses:', JSON.stringify(businessData))
+
+        if (businessData.data) {
+            for (const biz of businessData.data) {
+                if (biz.owned_pages?.data) {
+                    for (const page of biz.owned_pages.data) {
+                        // Avoid duplicates
+                        if (!allPages.find(p => p.id === page.id)) {
+                            allPages.push(page)
+                        }
+                    }
                 }
-            }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200,
-            })
+            }
         }
+
+        // 4. Also check client pages in business portfolio
+        if (businessData.data) {
+            for (const biz of businessData.data) {
+                const clientPagesRes = await fetch(`https://graph.facebook.com/v19.0/${biz.id}/client_pages?fields=id,name,access_token,category&limit=50&access_token=${userToken}`)
+                const clientPagesData = await clientPagesRes.json()
+                console.log(`[meta-oauth] business ${biz.id} client_pages:`, JSON.stringify(clientPagesData))
+                
+                if (clientPagesData.data) {
+                    for (const page of clientPagesData.data) {
+                        if (!allPages.find(p => p.id === page.id)) {
+                            allPages.push(page)
+                        }
+                    }
+                }
+            }
+        }
+
+        console.log('[meta-oauth] Total pages found:', allPages.length)
         
-        return new Response(JSON.stringify({ pages }), {
+        return new Response(JSON.stringify({ pages: allPages }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,
         })
+
     } catch (error) {
         console.error('[meta-oauth] Unexpected error:', error)
         return new Response(JSON.stringify({ error: error.message }), {
