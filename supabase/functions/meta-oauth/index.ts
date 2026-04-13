@@ -23,7 +23,7 @@ serve(async (req) => {
     }
 
     try {
-        const { short_lived_token } = await req.json()
+        const { short_lived_token, page_id } = await req.json()
         
         const appId = Deno.env.get('META_APP_ID')
         const appSecret = Deno.env.get('META_APP_SECRET')
@@ -33,17 +33,18 @@ serve(async (req) => {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400,
             })
         }
-
         if (!short_lived_token) {
             return new Response(JSON.stringify({ error: 'Falta el short_lived_token.' }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400,
             })
         }
 
-        // 1. Exchange short-lived → long-lived user token
+        // 1. Exchange short-lived user token → long-lived user token
         const exchangeUrl = `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${short_lived_token}`
         const exRes = await fetch(exchangeUrl)
         const exData = await exRes.json()
+        
+        console.log('[meta-oauth] Token exchange:', exData.error || 'OK, expires_in=' + exData.expires_in)
         
         if (exData.error) {
             return new Response(JSON.stringify({ error: 'Error al intercambiar token: ' + exData.error.message }), {
@@ -54,46 +55,52 @@ serve(async (req) => {
         const userToken = exData.access_token
         const allPages: Array<{id: string, name: string, access_token: string, category?: string}> = []
 
-        // 2. Try standard me/accounts (pages with direct personal role)
+        // 2. Strategy A: Standard me/accounts
         const accountsRes = await fetch(`https://graph.facebook.com/v19.0/me/accounts?fields=id,name,access_token,category&limit=50&access_token=${userToken}`)
         const accountsData = await accountsRes.json()
-        console.log('[meta-oauth] me/accounts:', JSON.stringify(accountsData))
+        console.log('[meta-oauth] me/accounts count:', accountsData?.data?.length ?? 'error', accountsData?.error?.message ?? '')
         
-        if (accountsData.data && accountsData.data.length > 0) {
+        if (accountsData.data?.length > 0) {
             allPages.push(...accountsData.data)
         }
 
-        // 3. Also try Business Portfolio pages (for pages managed via Meta Business Suite)
-        const businessRes = await fetch(`https://graph.facebook.com/v19.0/me/businesses?fields=id,name,owned_pages{id,name,access_token,category}&limit=10&access_token=${userToken}`)
-        const businessData = await businessRes.json()
-        console.log('[meta-oauth] me/businesses:', JSON.stringify(businessData))
-
-        if (businessData.data) {
-            for (const biz of businessData.data) {
-                if (biz.owned_pages?.data) {
-                    for (const page of biz.owned_pages.data) {
-                        // Avoid duplicates
-                        if (!allPages.find(p => p.id === page.id)) {
-                            allPages.push(page)
-                        }
-                    }
-                }
+        // 3. Strategy B: If page_id provided, fetch page token directly
+        // (Works for Business-portfolio-managed pages that don't appear in me/accounts)
+        if (page_id && allPages.find(p => p.id === page_id) === undefined) {
+            const directRes = await fetch(`https://graph.facebook.com/v19.0/${page_id}?fields=id,name,access_token,category&access_token=${userToken}`)
+            const directData = await directRes.json()
+            console.log('[meta-oauth] Direct page fetch:', JSON.stringify(directData).slice(0, 200))
+            
+            if (directData.id && directData.access_token) {
+                allPages.push(directData)
+            } else if (directData.id && !directData.access_token) {
+                // Has access to page info but no token — need page-level scope
+                console.warn('[meta-oauth] Page found but no access_token in response:', directData.id)
+                allPages.push({ id: directData.id, name: directData.name, access_token: userToken, category: directData.category })
+            } else {
+                console.warn('[meta-oauth] Direct page fetch failed:', JSON.stringify(directData))
             }
         }
 
-        // 4. Also check client pages in business portfolio
-        if (businessData.data) {
-            for (const biz of businessData.data) {
-                const clientPagesRes = await fetch(`https://graph.facebook.com/v19.0/${biz.id}/client_pages?fields=id,name,access_token,category&limit=50&access_token=${userToken}`)
-                const clientPagesData = await clientPagesRes.json()
-                console.log(`[meta-oauth] business ${biz.id} client_pages:`, JSON.stringify(clientPagesData))
-                
-                if (clientPagesData.data) {
-                    for (const page of clientPagesData.data) {
-                        if (!allPages.find(p => p.id === page.id)) {
-                            allPages.push(page)
-                        }
-                    }
+        // 4. Strategy C: Business Portfolio — owned_pages + client_pages
+        if (allPages.length === 0) {
+            const bizRes = await fetch(`https://graph.facebook.com/v19.0/me/businesses?fields=id,name&limit=10&access_token=${userToken}`)
+            const bizData = await bizRes.json()
+            console.log('[meta-oauth] me/businesses:', bizData?.data?.length ?? 0, 'businesses')
+
+            for (const biz of (bizData.data || [])) {
+                const ownedRes = await fetch(`https://graph.facebook.com/v19.0/${biz.id}/owned_pages?fields=id,name,access_token,category&limit=50&access_token=${userToken}`)
+                const ownedData = await ownedRes.json()
+                console.log(`[meta-oauth] business ${biz.id} owned_pages:`, ownedData?.data?.length ?? 0, ownedData?.error?.message ?? '')
+                for (const page of (ownedData.data || [])) {
+                    if (!allPages.find(p => p.id === page.id)) allPages.push(page)
+                }
+
+                const clientRes = await fetch(`https://graph.facebook.com/v19.0/${biz.id}/client_pages?fields=id,name,access_token,category&limit=50&access_token=${userToken}`)
+                const clientData = await clientRes.json()
+                console.log(`[meta-oauth] business ${biz.id} client_pages:`, clientData?.data?.length ?? 0, clientData?.error?.message ?? '')
+                for (const page of (clientData.data || [])) {
+                    if (!allPages.find(p => p.id === page.id)) allPages.push(page)
                 }
             }
         }

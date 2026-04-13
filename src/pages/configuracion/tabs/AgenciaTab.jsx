@@ -41,7 +41,10 @@ export default function AgenciaTab({ showToast, agencia }) {
         window.FB.login((response) => {
             if (response.authResponse) {
                 supabase.functions.invoke('meta-oauth', {
-                    body: { short_lived_token: response.authResponse.accessToken }
+                    body: { 
+                        short_lived_token: response.authResponse.accessToken,
+                        page_id: config['meta_page_id'] || null
+                    }
                 }).then(({ data, error }) => {
                     setIsMetaLoading(false)
                     if (error) {
