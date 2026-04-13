@@ -39,17 +39,23 @@ export default function AgenciaTab({ showToast, agencia }) {
         setIsMetaLoading(true)
         window.FB.login((response) => {
             if (response.authResponse) {
-                fetch(import.meta.env.VITE_SUPABASE_URL + '/functions/v1/meta-oauth', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ short_lived_token: response.authResponse.accessToken })
-                }).then(r => r.json()).then(data => {
+                supabase.functions.invoke('meta-oauth', {
+                    body: { short_lived_token: response.authResponse.accessToken }
+                }).then(({ data, error }) => {
                     setIsMetaLoading(false)
-                    if (data.error) return showToast(data.error, 'error')
-                    setFbPages(data.pages)
-                }).catch(() => {
+                    if (error) {
+                        console.error('Meta OAuth Runtime Error:', error);
+                        return showToast(error.message || 'Error del servidor Meta', 'error')
+                    }
+                    if (data && (data.error || !data.pages)) {
+                        console.error('Meta OAuth Data Error:', data);
+                        return showToast(data.error || data.message || 'Error interno de Meta', 'error')
+                    }
+                    setFbPages((data && data.pages) ? data.pages : [])
+                }).catch((err) => {
                     setIsMetaLoading(false)
                     showToast('Error de red al conectar', 'error')
+                    console.error(err)
                 })
             } else {
                 setIsMetaLoading(false)
@@ -522,4 +528,4 @@ export default function AgenciaTab({ showToast, agencia }) {
 /* ==========================================
    TAB 2: Plantillas de Email
    ========================================== */
-
+
