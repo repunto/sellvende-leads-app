@@ -8,6 +8,7 @@ export default function AgenciaTab({ showToast, agencia }) {
     const [saving, setSaving] = useState(false)
     const [isMetaLoading, setIsMetaLoading] = useState(false)
     const [fbPages, setFbPages] = useState([])
+    const [revealedFields, setRevealedFields] = useState({})
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { if(agencia?.id) loadConfig() }, [agencia?.id])
@@ -254,7 +255,7 @@ export default function AgenciaTab({ showToast, agencia }) {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                     <input
                                         className="form-input"
-                                        type={type}
+                                        type={type === 'password' ? (revealedFields[clave] ? 'text' : 'password') : type}
                                         placeholder={placeholder}
                                         value={config[clave] || (type === 'color' ? '#1a73e8' : '')}
                                         onChange={(e) => setConfig({ ...config, [clave]: e.target.value })}
@@ -274,6 +275,21 @@ export default function AgenciaTab({ showToast, agencia }) {
                                         <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
                                             {config[clave] || '#1a73e8'}
                                         </span>
+                                    )}
+                                    {type === 'password' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setRevealedFields(prev => ({ ...prev, [clave]: !prev[clave] }))}
+                                            title={revealedFields[clave] ? 'Ocultar' : 'Revelar'}
+                                            style={{
+                                                background: 'none', border: 'none', cursor: 'pointer',
+                                                color: 'var(--color-text-secondary)', fontSize: '1.1rem',
+                                                padding: '4px 8px', borderRadius: 8, flexShrink: 0,
+                                                transition: 'color 0.2s'
+                                            }}
+                                        >
+                                            {revealedFields[clave] ? '🙈' : '👁️'}
+                                        </button>
                                     )}
                                 </div>
                             )}
