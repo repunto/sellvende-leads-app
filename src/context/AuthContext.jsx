@@ -90,6 +90,26 @@ export function AuthProvider({ children }) {
                     fetchedAgencia = fetchedAgencia[0]
                 }
                 
+                // ORPHAN LINK DETECTED: user has a link but the agency table row is vanished
+                if (!fetchedAgencia) {
+                    console.log("[AuthContext] Orphan user link detected! Injecting emergency agency...")
+                    const { data: emergencyAgencia, error: emergErr } = await supabase
+                        .from('agencias')
+                        .insert({ nombre: 'Mi Agencia', plan: 'trial' })
+                        .select('id, nombre, plan')
+                        .single()
+                        
+                    if (!emergErr && emergencyAgencia) {
+                        // Update the broken link to point to this new healthy agency
+                        await supabase
+                            .from('usuarios_agencia')
+                            .update({ agencia_id: emergencyAgencia.id })
+                            .eq('usuario_id', userId)
+                            
+                        fetchedAgencia = emergencyAgencia
+                    }
+                }
+                
                 setAgencia(fetchedAgencia) // { id, nombre, plan }
             } else {
                 console.error('[AuthContext] Error fetching profile or empty data:', error || 'No data')
