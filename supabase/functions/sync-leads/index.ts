@@ -99,7 +99,9 @@ serve(async (req: Request) => {
             const formName = form.name || 'Formulario Meta'
             const productoFromForm = formName.split('-')[0].trim()
 
-            let url = `https://graph.facebook.com/v19.0/${form.id}/leads?fields=id,field_data,created_time,platform&limit=100&access_token=${metaToken}`
+            // Obtener leads de los últimos 7 días usando UNIX timestamp
+            const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+            let url = `https://graph.facebook.com/v19.0/${form.id}/leads?fields=id,field_data,created_time,platform&limit=100&since=${sevenDaysAgo}&access_token=${metaToken}`
 
             while (url) {
                 const resp = await fetch(url)
@@ -107,6 +109,9 @@ serve(async (req: Request) => {
                 if (page.error) break
 
                 const leadsArray = page.data || []
+                if (leadsArray.length === 0) break
+
+                let newlyImportedInThisPage = 0
 
                 for (const lead of leadsArray) {
                     const metaId = lead.id

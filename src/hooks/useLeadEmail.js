@@ -68,6 +68,7 @@ export function useLeadEmail({
     setDetailEmails,
     showToast,
     setConfirmDialog,
+    clearSelection,
 }) {
     // ── Modal state ──
     const [showEmailModal, setShowEmailModal] = useState(false)
@@ -344,11 +345,10 @@ export function useLeadEmail({
 
     const _doSendBulkEmail = useCallback(async (selected) => {
         setEmailSending(true)
-        setEmailProgress(`Enviando 0/${selected.length}...`)
+        setEmailProgress(`Encolando envío de ${selected.length} correos...`)
 
         try {
             const config = await loadEmailConfig()
-            const provider = config['proveedor_email'] || 'gmail'
             const fromEmail = config['email_remitente'] || ''
             const agencyName = config['nombre_visible'] || agencia?.nombre || 'Sellvende Leads'
             const senderName = config['nombre_remitente'] || agencyName
@@ -360,79 +360,61 @@ export function useLeadEmail({
                 return
             }
 
-            let sent = 0, failed = 0
+            const queueInserts = []
 
             for (let i = 0; i < selected.length; i++) {
                 const lead = selected[i]
-                try {
-                    const template = emailTemplates.find(t => t.id === selectedEmailTemplate)
-                    const tplOrigen = template?.origen || ''
+                const template = emailTemplates.find(t => t.id === selectedEmailTemplate)
+                const tplOrigen = template?.origen || ''
 
-                    const { body, subject } = buildEmailContent({
-                        rawHtml: emailBody || '',
-                        rawSubject: emailSubject,
-                        lead, config, agencyName, senderName, tplOrigen
-                    })
+                const { body, subject } = buildEmailContent({
+                    rawHtml: emailBody || '',
+                    rawSubject: emailSubject,
+                    lead, config, agencyName, senderName, tplOrigen
+                })
 
-                    const { data: result, error: invokeError } = await supabase.functions.invoke('resend-email', {
-                        body: {
-                            agencia_id: agencia?.id,
-                            from: `${senderName} <${fromEmail}>`,
-                            to: [lead.email],
-                            subject,
-                            html: wrapEmailTemplate({
-                                body, agencyName,
-                                agencyUrl: config['url_web'] || '',
-                                agencyEmail: fromEmail,
-                                agencyPhone: config['telefono_agencia'] || config['whatsapp'] || '',
-                                logoUrl: config['logo_url'] || '',
-                                previewText: config['email_preheader'] || '',
-                                primaryColor: config['color_marca'] || '#1a73e8'
-                            })
-                        }
-                    })
+                const finalHtml = wrapEmailTemplate({
+                    body, agencyName,
+                    agencyUrl: config['url_web'] || '',
+                    agencyEmail: fromEmail,
+                    agencyPhone: config['telefono_agencia'] || config['whatsapp'] || '',
+                    logoUrl: config['logo_url'] || '',
+                    previewText: config['email_preheader'] || '',
+                    primaryColor: config['color_marca'] || '#1a73e8'
+                })
 
-                    const isSuccess = !invokeError && !result?.error
-
-                    await supabase.from('email_log').insert([{
-                        agencia_id: agencia?.id,
-                        lead_id: lead.id,
-                        tipo: 'masivo',
-                        asunto: subject,
-                        cuerpo: body,
-                        estado: isSuccess ? 'enviado' : 'fallido',
-                        resend_id: result?.id || null
-                    }])
-
-                    if (isSuccess) {
-                        sent++
-                        const updateFields = { ultimo_contacto: new Date().toISOString() }
-                        if (lead.estado === 'nuevo') updateFields.estado = 'contactado'
-                        await supabase.from('leads').update(updateFields).eq('id', lead.id)
-                        setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, ...updateFields } : l))
-                    } else {
-                        failed++
-                    }
-                } catch { failed++ }
-
-                // Humanized delay for Gmail safety
-                if (provider === 'gmail' && i < selected.length - 1) {
-                    await new Promise(r => setTimeout(r, 1500 + Math.random() * 2000))
-                } else if (i < selected.length - 1) {
-                    await new Promise(r => setTimeout(r, 300))
-                }
-                setEmailProgress(`Enviando ${sent + failed}/${selected.length}...`)
+                queueInserts.push({
+                    agencia_id: agencia?.id,
+                    lead_id: lead.id,
+                    email_destinatario: lead.email,
+                    asunto: subject,
+                    cuerpo_html: finalHtml,
+                    template_id: template?.id || null,
+                    estado: 'pendiente',
+                    intentos: 0
+                })
             }
 
-            showToast(`📧 ${sent} emails enviados${failed > 0 ? `, ${failed} fallidos` : ''}`)
+            const chunkSize = 100
+            for (let i = 0; i < queueInserts.length; i += chunkSize) {
+                const chunk = queueInserts.slice(i, i + chunkSize)
+                const { error: queueErr } = await supabase.from('email_queue').insert(chunk)
+                if (queueErr) throw queueErr
+            }
+
+            // Opcional: Despertar de inmediato a la Queue Function sin esperar 1 minuto
+            supabase.functions.invoke('process-queue').catch(e => console.warn('process-queue wakeup failed', e))
+
+            showToast(`🚀 ${selected.length} emails encolados para envío en segundo plano.`)
             setShowEmailModal(false)
+            if (clearSelection) clearSelection()
         } catch (err) {
-            showToast('Error: ' + err.message, 'error')
+            showToast('Error preparando envíos: ' + err.message, 'error')
         } finally {
             setEmailSending(false)
             setEmailProgress('')
         }
-    }, [agencia, emailBody, emailSubject, setLeads, showToast])
+    }, [agencia, emailBody, emailSubject, emailTemplates, selectedEmailTemplate, clearSelection, showToast])
 
     return {
         // Modal state

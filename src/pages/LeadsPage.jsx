@@ -149,6 +149,7 @@ export default function LeadsPage() {
         setDetailEmails,
         showToast,
         setConfirmDialog,
+        clearSelection: () => setSelectedLeads(new Set()),
     })
 
     // Merge: DB-loaded enrollments (seqEnrollmentsFromSync) as base,
@@ -197,6 +198,7 @@ export default function LeadsPage() {
         setDetailEmails,
         showToast,
         setConfirmDialog,
+        clearSelection: () => setSelectedLeads(new Set()),
     })
 
     // Wrappers that inject context the hook needs from here

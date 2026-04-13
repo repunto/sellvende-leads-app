@@ -15,6 +15,7 @@ export function useLeadSequences({
     setDetailEmails,
     showToast,
     setConfirmDialog,
+    clearSelection,
 }) {
     const [leadSecuencia, setLeadSecuencia] = useState(null)
     const [sequenceEnrollments, setSequenceEnrollments] = useState({})
@@ -111,8 +112,12 @@ export function useLeadSequences({
                         .update({ ultimo_contacto: fakeLastContact.toISOString() })
                         .eq('id', detailLead.id)
 
-                    // 3. Fire the drip engine
-                    const { data: fnData, error: fnErr } = await supabase.functions.invoke('process-drips')
+                    // 3. Fire the drip engine with explicit session token
+                    const { data: sessionSnap } = await supabase.auth.getSession()
+                    const tok = sessionSnap?.session?.access_token
+                    const { data: fnData, error: fnErr } = await supabase.functions.invoke('process-drips', {
+                        headers: tok ? { Authorization: `Bearer ${tok}` } : {}
+                    })
                     if (fnErr) throw fnErr
 
                     if (fnData?.errors?.length > 0) {
@@ -274,8 +279,14 @@ export function useLeadSequences({
                 return next
             })
 
-            // CRITICAL: Fire process-drips BEFORE the cron kicks in
-            await supabase.functions.invoke('process-drips')
+            // CRITICAL: Fire process-drips in the background. 
+            // We DO NOT await it, because sending emails can take 20-30 seconds
+            // and we want the UI to feel instant and professional.
+            const { data: enrollSession } = await supabase.auth.getSession()
+            const enrollTok = enrollSession?.session?.access_token
+            supabase.functions.invoke('process-drips', {
+                headers: enrollTok ? { Authorization: `Bearer ${enrollTok}` } : {}
+            }).catch(e => console.error('Background process-drips error:', e))
             
             // Note: We deliberately do NOT update ultimo_contacto or estado locally here anymore.
             // The real-time WebSockets (useMetaSync) will listen for the actual dispatch confirmation
@@ -283,6 +294,7 @@ export function useLeadSequences({
 
             showToast(`✅ ${selectedLeadIds.size} leads enrolados y primer correo enviado.`, 'success')
             setShowMassSequenceModal(false)
+            if (clearSelection) clearSelection()
         } catch (error) {
             console.error(error)
             showToast('Error en enrolamiento masivo: ' + error.message, 'error')

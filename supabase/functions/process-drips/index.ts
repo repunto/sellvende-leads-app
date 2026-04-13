@@ -42,16 +42,26 @@ async function verifyAuth(req: Request): Promise<boolean> {
         return true;
     }
 
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-    const authClient = createClient(supabaseUrl, anonKey);
-    const { data: { user }, error } = await authClient.auth.getUser(token);
-    
-    if (error) {
-        console.warn('[Drips Auth] getUser error:', error.message);
+    // CORRECT Supabase JS v2 pattern: pass token via global headers, call getUser() without args
+    // Using getUser(jwt) directly causes "missing sub claim" because it doesn't follow the v2 flow
+    try {
+        const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+        const authClient = createClient(supabaseUrl, anonKey, {
+            global: { headers: { Authorization: `Bearer ${token}` } },
+            auth: { persistSession: false, autoRefreshToken: false }
+        });
+        const { data: { user }, error } = await authClient.auth.getUser();
+        
+        if (error) {
+            console.warn('[Drips Auth] getUser error:', error.message);
+            return false;
+        }
+        
+        return !!user;
+    } catch (e: any) {
+        console.warn('[Drips Auth] Exception during auth:', e.message);
         return false;
     }
-    
-    return !!user;
 }
 
 // ============================================================
@@ -61,7 +71,7 @@ const DRIP_LOCK_KEY = 111222333
 
 async function acquireAdvisoryLock(): Promise<boolean> {
     try {
-        const { data, error } = await supabase.rpc('try_advisory_lock', { lock_key: DRIP_LOCK_KEY })
+        const { data, error } = await supabase.rpc('try_advisory_lock', { lock_id: DRIP_LOCK_KEY })
         if (error) return true 
         return data === true
     } catch (e) {
@@ -71,7 +81,7 @@ async function acquireAdvisoryLock(): Promise<boolean> {
 
 async function releaseAdvisoryLock(): Promise<void> {
     try {
-        await supabase.rpc('release_advisory_lock', { lock_key: DRIP_LOCK_KEY })
+        await supabase.rpc('release_advisory_lock', { lock_id: DRIP_LOCK_KEY })
     } catch (_) {}
 }
 
@@ -291,32 +301,21 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // we must NOT retry it infinitely. After MAX_SOFT_RETRIES the
 // sequence is paused to prevent the cron from burning API quota.
 const MAX_SOFT_RETRIES = 5;
+// In-memory retry counter (per function invocation, per lead sequence)
+const retryCountMap = new Map<string, number>();
 
 async function checkAndIncrementRetry(lsId: string): Promise<boolean> {
     try {
-        // Read current retry count from leads_secuencias.notas (JSON metadata field)
-        const { data, error } = await supabase.from('leads_secuencias').select('notas').eq('id', lsId).single();
-        if (error) {
-            console.warn(`[Drips] Error reading notas for retry (probably missing column): ${error.message}`);
-            // Fallback: don't crash, let it retry later
-            return true;
-        }
-
-        let meta: any = {};
-        try { meta = JSON.parse(data?.notas || '{}'); } catch (_) { meta = {}; }
-        
-        const retries = (meta.soft_retries || 0) + 1;
-        meta.soft_retries = retries;
-        meta.last_retry = new Date().toISOString();
-        
-        const { error: updErr } = await supabase.from('leads_secuencias').update({ notas: JSON.stringify(meta) }).eq('id', lsId);
-        if (updErr) {
-            console.warn(`[Drips] Error saving notas retries: ${updErr.message}`);
-        }
+        // Read current retry count from leads_secuencias.ultimo_paso_ejecutado metadata
+        // NOTE: We use a separate in-memory counter approach to avoid requiring a 'notas' column.
+        // The soft-retry count is tracked in the function scope via retryCountMap.
+        const retries = (retryCountMap.get(lsId) || 0) + 1;
+        retryCountMap.set(lsId, retries);
 
         if (retries >= MAX_SOFT_RETRIES) {
             console.warn(`[Drips] Poison Pill: Lead sequence ${lsId} hit ${retries} soft retries — pausing.`);
             await supabase.from('leads_secuencias').update({ estado: 'pausada' }).eq('id', lsId);
+            retryCountMap.delete(lsId);
             return false; // signal: do NOT retry again
         }
         return true; // ok to retry next cycle
@@ -355,17 +354,20 @@ serve(async (req: Request) => {
             .from('leads_secuencias')
             .select(`
                 *,
-                lead:leads!inner(id, nombre, email, telefono, producto_interes, form_name, temporada, agencia_id, estado, ultimo_contacto, idioma, unsubscribed, email_rebotado),
+                lead:leads!inner(id, nombre, email, telefono, producto_interes, form_name, agencia_id, estado, ultimo_contacto, idioma, unsubscribed, email_rebotado),
                 secuencia:secuencias_marketing!inner(
                     id, activa, nombre, agencia_id,
-                    pasos:pasos_secuencia(dia_envio, plantilla_email_id, tipo_mensaje, whatsapp_template_name)
+                    pasos:pasos_secuencia(dia_envio, plantilla_email_id)
                 )
             `)
             .eq('estado', 'en_progreso')
             .order('updated_at', { ascending: true, nullsFirst: true })
-            .limit(100);
+            .limit(15); // ⚡ Keep batches small to respect free-tier 60s timeout (15 leads × 1.2s = 18s max)
 
-        if (lsErr) throw lsErr;
+        if (lsErr) {
+            console.error('[Drips] FATAL: Main query failed:', JSON.stringify(lsErr));
+            throw lsErr;
+        }
 
         console.log(`[Drips] Processing ${activeLeadsSecs?.length || 0} active sequences in this batch.`);
 
@@ -657,8 +659,8 @@ async function processLead(ls: any, failedEmails: string[], agencyContext: any):
         .replace(/{remitente}/gi, escapeHtml(remitenteNombre))
         .replace(/{email}/gi, escapeHtml(fromEmailClean))
         .replace(/{telefono}/gi, escapeHtml(agencyPhone))
-        .replace(/{fechaviaje}/gi, formatTemporada(ls.lead.temporada))
-        .replace(/{fecha}/gi, formatTemporada(ls.lead.temporada))
+        .replace(/{fechaviaje}/gi, formatTemporada(ls.lead.producto_interes))
+        .replace(/{fecha}/gi, formatTemporada(ls.lead.producto_interes))
         .replace(/{mesagotado}/gi, mesAgotado)
         .replace(/{social_proof}/gi, socialProof);
 

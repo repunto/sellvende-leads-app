@@ -311,7 +311,16 @@ export function useMarketingData() {
         setProcesandoDrips(true)
         showToast('Iniciando ciclo manual de Autopilot...', 'info')
         try {
-            const { data, error } = await supabase.functions.invoke('process-drips')
+            // Explicitly pass session token — required with publishable key format
+            const { data: sessionData } = await supabase.auth.getSession()
+            const accessToken = sessionData?.session?.access_token
+            const invokeHeaders = accessToken
+                ? { Authorization: `Bearer ${accessToken}` }
+                : {}
+
+            const { data, error } = await supabase.functions.invoke('process-drips', {
+                headers: invokeHeaders
+            })
             if (error) throw error
             if (data?.errors?.length > 0) {
                 showToast(

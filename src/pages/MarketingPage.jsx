@@ -231,7 +231,12 @@ export default function MarketingPage() {
                 setProcesandoDrips(true);
                 showToast('Iniciando ciclo manual de Autopilot...', 'info');
                 try {
-                    const { data, error } = await supabase.functions.invoke('process-drips');
+                    const { data: sessionData } = await supabase.auth.getSession()
+                    const accessToken = sessionData?.session?.access_token
+                    
+                    const { data, error } = await supabase.functions.invoke('process-drips', {
+                        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
+                    });
                     if (error) throw error;
                     
                     if (data?.errors?.length > 0) {
