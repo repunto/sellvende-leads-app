@@ -76,7 +76,10 @@ serve(async (req: Request) => {
         }
 
         // 2. Fetch Forms
-        const formsResp = await fetch(`https://graph.facebook.com/v19.0/${pageId}/leadgen_forms?fields=id,name&access_token=${metaToken}`)
+        // SECURITY (Risk #12): Token in Header
+        const formsResp = await fetch(`https://graph.facebook.com/v19.0/${pageId}/leadgen_forms?fields=id,name`, {
+            headers: { 'Authorization': `Bearer ${metaToken}` }
+        })
         const formsData = await formsResp.json()
         if (formsData.error) throw new Error('Error Meta Forms: ' + formsData.error.message)
         
@@ -101,10 +104,13 @@ serve(async (req: Request) => {
 
             // Obtener leads de los últimos 7 días usando UNIX timestamp
             const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
-            let url = `https://graph.facebook.com/v19.0/${form.id}/leads?fields=id,field_data,created_time,platform&limit=100&since=${sevenDaysAgo}&access_token=${metaToken}`
+            // SECURITY (Risk #12): Token in Header
+            let url = `https://graph.facebook.com/v19.0/${form.id}/leads?fields=id,field_data,created_time,platform&limit=100&since=${sevenDaysAgo}`
 
             while (url) {
-                const resp = await fetch(url)
+                const resp = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${metaToken}` }
+                })
                 const page = await resp.json()
                 if (page.error) break
 

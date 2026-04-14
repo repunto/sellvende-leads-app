@@ -7,6 +7,7 @@ import { useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { wrapEmailTemplate } from '../lib/emailTemplate'
 import { formatTemporada, mesAgotado } from '../lib/leadsUtils'
+import DOMPurify from 'dompurify'
 
 // Static social proof snippets (non-sensitive, can live in frontend)
 const SOCIAL_PROOF_EMAIL = {
@@ -21,7 +22,7 @@ function buildEmailContent({ rawHtml, rawSubject, lead, config, agencyName, send
     const fromEmail = config['email_remitente'] || ''
     const activeProductoName = tplOrigen || lead.producto_interes || lead.form_name || 'nuestro producto'
 
-    const body = rawHtml
+    const body = DOMPurify.sanitize(rawHtml
         .replace(/{nombre}/gi, lead.nombre || '')
         .replace(/{producto}/gi, activeProductoName)
         .replace(/{email}/gi, fromEmail)
@@ -32,6 +33,7 @@ function buildEmailContent({ rawHtml, rawSubject, lead, config, agencyName, send
         .replace(/{fecha}/gi, formatTemporada(lead.temporada))
         .replace(/{mesagotado}/gi, mesAgotado)
         .replace(/{social_proof}/gi, socialProof)
+    );
 
     const subject = rawSubject
         .replace(/{nombre}/gi, lead.nombre || '')

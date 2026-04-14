@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { Mail, CheckCircle2, XCircle, Bot, MailCheck, Activity, AlertTriangle, Upload } from 'lucide-react';
 import '../styles/ActivityPage.css';
 import LeadXRayModal from '../components/activity/LeadXRayModal';
 
 export default function ActivityPage() {
+    const { agencia } = useAuth();
+    const agenciaId = agencia?.id;
     const [loading, setLoading] = useState(true);
     const [logs, setLogs] = useState([]);
     const [failedLogs, setFailedLogs] = useState([]);
@@ -22,11 +25,12 @@ export default function ActivityPage() {
     const [importResult, setImportResult] = useState(null);
 
     useEffect(() => {
+        if (!agenciaId) return;
         loadDashboardData();
 
         const channel = supabase
             .channel('radar-email-logs')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'email_log' }, () => {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'email_log', filter: `agencia_id=eq.${agenciaId}` }, () => {
                 loadDashboardData(true);
             })
             .subscribe((status) => {
@@ -35,19 +39,21 @@ export default function ActivityPage() {
             });
 
         return () => { supabase.removeChannel(channel); };
-    }, []);
+    }, [agenciaId]);
 
     const loadDashboardData = async (silent = false) => {
+        if (!agenciaId) return;
         if (!silent) setLoading(true);
         try {
-            // Fetch ALL logs for breakdown (up to 1000)
+            // Fetch logs filtered by agency (SECURITY: multi-tenant isolation)
             const { data: logData, error: logErr } = await supabase
                 .from('email_log')
                 .select(`
                     id, created_at, tipo, estado, email_enviado, mensaje_error,
-                    lead_id, asunto,
+                    lead_id, asunto, agencia_id,
                     lead:leads(nombre, email, producto_interes, form_name, unsubscribed)
                 `)
+                .eq('agencia_id', agenciaId)
                 .order('created_at', { ascending: false })
                 .limit(1000);
 
@@ -75,17 +81,17 @@ export default function ActivityPage() {
             setFailedLogs(allFailed.slice(0, 100));
             setLogs((logData || []).filter(l => l.estado === 'enviado').slice(0, 50));
 
-            // Autopilot counts
-            const { data: pilots } = await supabase.from('leads_secuencias').select('id, estado');
+            // Autopilot counts (SECURITY: filtered by agency)
+            const { data: pilots } = await supabase.from('leads_secuencias').select('id, estado').eq('agencia_id', agenciaId);
             const actPilots = pilots?.filter(p => p.estado === 'en_progreso' || p.estado === 'nuevo').length || 0;
             setActivePilots(actPilots);
             setTotalPilots(pilots?.length || 0);
 
-            // Real counts from DB
+            // Real counts from DB (SECURITY: filtered by agency)
             const [resSent, resFailed, resAuto] = await Promise.all([
-                supabase.from('email_log').select('*', { count: 'exact', head: true }).eq('estado', 'enviado'),
-                supabase.from('email_log').select('*', { count: 'exact', head: true }).in('estado', ['fallido', 'rebotado']),
-                supabase.from('email_log').select('*', { count: 'exact', head: true }).neq('tipo', 'manual'),
+                supabase.from('email_log').select('*', { count: 'exact', head: true }).eq('agencia_id', agenciaId).eq('estado', 'enviado'),
+                supabase.from('email_log').select('*', { count: 'exact', head: true }).eq('agencia_id', agenciaId).in('estado', ['fallido', 'rebotado']),
+                supabase.from('email_log').select('*', { count: 'exact', head: true }).eq('agencia_id', agenciaId).neq('tipo', 'manual'),
             ]);
 
             setStats({

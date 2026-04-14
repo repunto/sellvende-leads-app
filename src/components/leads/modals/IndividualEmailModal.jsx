@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import EliteEmailEditor from '../EliteEmailEditor'
+import DOMPurify from 'dompurify'
 
 export default function IndividualEmailModal({
     show, onClose, lead, emailMode, setEmailMode, selectedSequenceId, setSelectedSequenceId, secuencias,
@@ -28,6 +29,8 @@ export default function IndividualEmailModal({
         .replace(/\{(FechaViaje|fecha_entrega)\}/gi, lead.temporada || '')
         .replace(/\{telefono\}/gi, configs?.telefono_agencia || configs?.whatsapp || '')
         .replace(/\{social_proof\}/gi, '')
+
+    const sanitizedPreviewHtml = DOMPurify.sanitize(previewHtml);
 
     return (
         <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
@@ -131,7 +134,7 @@ export default function IndividualEmailModal({
                                                 lineHeight: 1.7, background: '#ffffff',
                                                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
                                             }}
-                                                dangerouslySetInnerHTML={{ __html: previewHtml }}
+                                                dangerouslySetInnerHTML={{ __html: sanitizedPreviewHtml }}
                                             />
                                             
                                             {/* Email Footer */}

@@ -9,7 +9,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 // Token = first 32 chars of base64(HMAC-SHA256(leadId, SERVICE_ROLE_KEY))
 // This makes the UUID+token pair unguessable without the server secret.
 async function generateToken(leadId: string): Promise<string> {
-    const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || 'fallback-secret'
+    const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (!secret) throw new Error('SUPABASE_SERVICE_ROLE_KEY no configurada');
+
     const key = await crypto.subtle.importKey(
         'raw',
         new TextEncoder().encode(secret),

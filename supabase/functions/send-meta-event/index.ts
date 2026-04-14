@@ -37,6 +37,13 @@ Deno.serve(async (req) => {
     }
 
     try {
+        const WEBHOOK_SECRET = Deno.env.get('CAPI_WEBHOOK_SECRET');
+        const authHeader = req.headers.get('X-Webhook-Secret') || req.headers.get('Authorization')?.replace('Bearer ', '');
+        
+        if (WEBHOOK_SECRET && authHeader !== WEBHOOK_SECRET) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { headers: corsHeaders, status: 401 });
+        }
+
         const payload = await req.json()
 
         // ── Validación de entrada ────────────────────────────

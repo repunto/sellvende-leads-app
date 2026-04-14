@@ -37,7 +37,7 @@ export default function PlantillasTab({ showToast, agencia }) {
         const [plantillasRes, productosRes, leadsRes] = await Promise.all([
             supabase.from('plantillas_email').select('*').eq('agencia_id', agencia.id).order('tipo'),
             supabase.from('productos').select('id, nombre').eq('agencia_id', agencia.id).eq('activo', true).order('nombre'),
-            supabase.from('leads').select('form_name').not('form_name', 'is', null)
+            supabase.from('leads').select('form_name').eq('agencia_id', agencia.id).not('form_name', 'is', null)
         ])
 
         if (!plantillasRes.error) {

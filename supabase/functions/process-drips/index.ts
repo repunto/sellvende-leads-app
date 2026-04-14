@@ -111,7 +111,8 @@ function formatTemporada(t: string | null | undefined): string {
 }
 
 async function generateUnsubToken(leadId: string): Promise<string> {
-    const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || 'fallback-secret';
+    const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!secret) throw new Error('SUPABASE_SERVICE_ROLE_KEY no configurada');
     const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
     const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(leadId));
     const b64 = btoa(String.fromCharCode(...new Uint8Array(sig)));

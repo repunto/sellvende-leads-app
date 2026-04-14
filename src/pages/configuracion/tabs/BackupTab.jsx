@@ -39,10 +39,10 @@ export default function BackupTab({ showToast, agencia }) {
         try {
             // 1. Extraer todas las tablas críticas
             const [leads, ventas, productos, opciones] = await Promise.all([
-                supabase.from('leads').select('*').order('created_at', { ascending: false }),
-                supabase.from('ventas').select('*').order('created_at', { ascending: false }),
-                supabase.from('productos').select('*').order('created_at', { ascending: false }),
-                supabase.from('extras').select('*').order('created_at', { ascending: false })
+                supabase.from('leads').select('*').eq('agencia_id', agencia.id).order('created_at', { ascending: false }),
+                supabase.from('ventas').select('*').eq('agencia_id', agencia.id).order('created_at', { ascending: false }),
+                supabase.from('productos').select('*').eq('agencia_id', agencia.id).order('created_at', { ascending: false }),
+                supabase.from('extras').select('*').eq('agencia_id', agencia.id).order('created_at', { ascending: false })
             ])
 
             if (leads.error) throw leads.error

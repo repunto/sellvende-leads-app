@@ -145,6 +145,17 @@ serve(async (req) => {
         const config: Record<string, string> = {}
         configRows.forEach((r: any) => { config[r.clave] = r.valor })
 
+        // ── SECURITY CHECK: SPOOFING PREVENTION (Risk #8) ────────────────
+        const validFromEmail = config['email_remitente'] || config['gmail_user'];
+        const extractedFrom = from.includes('<') ? from.split('<')[1].replace('>', '').trim() : from.trim();
+        if (validFromEmail && extractedFrom !== validFromEmail.trim()) {
+            console.error(`[SecOps] Spoofing attempt blocked. Expected ${validFromEmail}, got ${extractedFrom}`);
+            return jsonResponse(
+                { error: 'Prohibido: El correo remitente (from) falsificado. No coincide con el validado para tu agencia.' },
+                403, corsHeaders
+            );
+        }
+
         // Auto-detect engine from available credentials
         const engine = config['proveedor_email']
             || (config['gmail_app_password'] ? 'gmail' : null)

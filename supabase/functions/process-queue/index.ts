@@ -32,14 +32,10 @@ serve(async (req) => {
     try {
         console.log('[QueueWorker] Started process-queue worker.')
 
-        // 1. Fetch TOP 50 pending emails across all agencies to process in this 60s execution window
-        // We use 50 and 1200ms sleep = ~60 seconds max execution time for Edge Functions
+        // 1. Fetch TOP 50 pending emails using the atomic grab_queue_items RPC
+        // This prevents race conditions where multiple workers grab the same emails.
         const { data: queueItems, error: fetchErr } = await supabaseClient
-            .from('email_queue')
-            .select('*')
-            .eq('estado', 'pendiente')
-            .order('created_at', { ascending: true })
-            .limit(50)
+            .rpc('grab_queue_items', { p_limit: 50 })
 
         if (fetchErr) throw fetchErr
         if (!queueItems || queueItems.length === 0) {
@@ -47,11 +43,7 @@ serve(async (req) => {
             return new Response(JSON.stringify({ status: 'idle', message: 'No pending emails' }), { status: 200 })
         }
 
-        console.log(`[QueueWorker] Found ${queueItems.length} emails to process.`)
-
-        // Mark them as "procesando" to prevent other concurrent workers from grabbing them
-        const queueIds = queueItems.map(q => q.id)
-        await supabaseClient.from('email_queue').update({ estado: 'procesando' }).in('id', queueIds)
+        console.log(`[QueueWorker] Found and locked ${queueItems.length} emails to process.`)
 
         // Group by agency to fetch configs efficiently
         const itemsByAgency = queueItems.reduce((acc, item) => {

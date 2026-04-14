@@ -29,9 +29,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 // ── HMAC-SHA256 signature verification (Svix format used by Resend) ──────────
 async function verifyWebhookSignature(req: Request, rawBody: string): Promise<boolean> {
     if (!WEBHOOK_SECRET) {
-        // No secret configured — warn but allow in dev mode
-        console.warn('[Bounce] RESEND_WEBHOOK_SECRET not set. Skipping signature check.')
-        return true
+        console.error('[Bounce] RESEND_WEBHOOK_SECRET not set. Denying request for security.');
+        return false;
     }
 
     // Svix sends: svix-id, svix-timestamp, svix-signature headers

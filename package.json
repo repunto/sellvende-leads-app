@@ -17,6 +17,8 @@
     "@tiptap/pm": "^3.21.0",
     "@tiptap/react": "^3.21.0",
     "@tiptap/starter-kit": "^3.21.0",
+    "@types/dompurify": "^3.0.5",
+    "dompurify": "^3.3.3",
     "html2pdf.js": "^0.14.0",
     "lucide-react": "^1.7.0",
     "qrcode.react": "^4.2.0",

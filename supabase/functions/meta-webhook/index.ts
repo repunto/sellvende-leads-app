@@ -202,8 +202,11 @@ async function processNewLead(pageId: string, formId: string, leadgenId: string)
     const accessToken = configToken.valor
 
     // 4. Fetch Lead Details from Meta Graph API
-    const graphUrl = `https://graph.facebook.com/v19.0/${leadgenId}?fields=id,field_data,created_time,platform,campaign_name,adset_name,ad_name&access_token=${accessToken}`
-    const fbRes = await fetch(graphUrl)
+    // SECURITY (Risk #12): Tokens in headers, not URL
+    const graphUrl = `https://graph.facebook.com/v19.0/${leadgenId}?fields=id,field_data,created_time,platform,campaign_name,adset_name,ad_name`
+    const fbRes = await fetch(graphUrl, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    })
     const leadData = await fbRes.json()
 
     if (leadData.error) {
@@ -249,8 +252,11 @@ async function processNewLead(pageId: string, formId: string, leadgenId: string)
 
     // Get form name
     let productoNombre = 'Meta Lead'
-    const formUrl = `https://graph.facebook.com/v19.0/${formId}?fields=name&access_token=${accessToken}`
-    const formRes = await fetch(formUrl)
+    // SECURITY (Risk #12): Tokens in headers, not URL
+    const formUrl = `https://graph.facebook.com/v19.0/${formId}?fields=name`
+    const formRes = await fetch(formUrl, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+    })
     const formData = await formRes.json()
     if (!formData.error && formData.name) {
         productoNombre = formData.name.split('-')[0].trim()
@@ -403,12 +409,12 @@ async function sendNewLeadAlert(agenciaId: string, lead: any, producto: string) 
     </div>
     <div style="padding:24px 28px;">
       <table style="width:100%;border-collapse:collapse;">
-        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;width:110px;">Nombre</td><td style="padding:10px 0;color:#f1f5f9;font-weight:700;font-size:15px;">${lead.nombre}</td></tr>
-        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Email</td><td style="padding:10px 0;color:#f1f5f9;font-size:14px;">${lead.email || '—'}</td></tr>
-        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Teléfono</td><td style="padding:10px 0;color:#f1f5f9;font-size:14px;">${lead.telefono || '—'}</td></tr>
-        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Producto</td><td style="padding:10px 0;color:#a78bfa;font-weight:600;font-size:14px;">${producto}</td></tr>
-        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Origen</td><td style="padding:10px 0;color:#f1f5f9;font-size:14px;">${lead.origen || 'Meta Ads'}</td></tr>
-        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Campaña</td><td style="padding:10px 0;color:#f1f5f9;font-size:14px;">${lead.campaign_name || lead.utm_campaign || '—'}</td></tr>
+        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;width:110px;">Nombre</td><td style="padding:10px 0;color:#f1f5f9;font-weight:700;font-size:15px;">${sanitizeInput(lead.nombre)}</td></tr>
+        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Email</td><td style="padding:10px 0;color:#f1f5f9;font-size:14px;">${sanitizeInput(lead.email || '—')}</td></tr>
+        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Teléfono</td><td style="padding:10px 0;color:#f1f5f9;font-size:14px;">${sanitizeInput(lead.telefono || '—')}</td></tr>
+        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Producto</td><td style="padding:10px 0;color:#a78bfa;font-weight:600;font-size:14px;">${sanitizeInput(producto)}</td></tr>
+        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Origen</td><td style="padding:10px 0;color:#f1f5f9;font-size:14px;">${sanitizeInput(lead.origen || 'Meta Ads')}</td></tr>
+        <tr><td style="padding:10px 0;color:#94a3b8;font-size:13px;">Campaña</td><td style="padding:10px 0;color:#f1f5f9;font-size:14px;">${sanitizeInput(lead.campaign_name || lead.utm_campaign || '—')}</td></tr>
       </table>
       <div style="margin-top:20px;padding:14px 18px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;border-left:4px solid #ef4444;">
         <div style="color:#f87171;font-weight:700;font-size:14px;">⏱️ Regla de los 5 Minutos</div>
