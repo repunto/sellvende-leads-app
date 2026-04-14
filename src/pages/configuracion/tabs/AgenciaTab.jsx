@@ -17,6 +17,25 @@ export default function AgenciaTab({ showToast, agencia }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { if(agencia?.id) loadConfig() }, [agencia?.id])
 
+    // Meta SDK Initialization for App Review
+    useEffect(() => {
+        window.fbAsyncInit = function() {
+            window.FB.init({
+                appId            : '1267272824797352',
+                autoLogAppEvents : true,
+                xfbml            : true,
+                version          : 'v19.0'
+            });
+        };
+        (function(d, s, id){
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) {return;}
+            js = d.createElement(s); js.id = id;
+            js.src = "https://connect.facebook.net/en_US/sdk.js";
+            fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
+    }, []);
+
     // Auto-validate existing token on load
     useEffect(() => {
         if (config.meta_page_access_token && config.meta_page_access_token.startsWith('EAA')) {
@@ -83,6 +102,40 @@ export default function AgenciaTab({ showToast, agencia }) {
         } catch {
             showToast('Error al desconectar', 'error')
         }
+    }
+
+    const handleOAuthLogin = () => {
+        if (!window.FB) {
+            showToast('El SDK de Facebook aún no carga. Espera un segundo.', 'error');
+            return;
+        }
+        setMetaValidating(true);
+        window.FB.login(function(response) {
+            if (response.authResponse) {
+                const short_lived_token = response.authResponse.accessToken;
+                // Exchange the token via edge function
+                supabase.functions.invoke('meta-oauth', {
+                    body: { short_lived_token }
+                }).then(({ data, error }) => {
+                    setMetaValidating(false);
+                    if (error) {
+                        console.error("OAuth Error:", error);
+                        showToast('Error validando token. Usa el panel manual.', 'error');
+                    } else if (data && data.pages && data.pages.error) {
+                        showToast('Error de Meta: ' + data.pages.error.message, 'error');
+                    } else if (data && data.pages && data.pages.data && data.pages.data.length > 0) {
+                        // Agarramos la primera página que devuelva (para simplificar la review)
+                        const firstPage = data.pages.data[0];
+                        validateMetaToken(firstPage.access_token);
+                    } else {
+                        showToast('No se encontraron páginas en esta cuenta.', 'error');
+                    }
+                });
+            } else {
+                setMetaValidating(false);
+                showToast('Login cancelado.', 'error');
+            }
+        }, {scope: 'pages_show_list,pages_manage_ads,leads_retrieval,pages_read_engagement,business_management'});
     }
 
     async function loadConfig() {
@@ -457,11 +510,37 @@ export default function AgenciaTab({ showToast, agencia }) {
 
                         {/* Token Input Section */}
                         <div style={{ padding: '24px 28px' }}>
+                            {/* OAUTH BUTTON PARA REVISOR META */}
+                            {!isConnected && (
+                                <div style={{ marginBottom: 24, paddingBottom: 24, borderBottom: '1px solid var(--color-border)' }}>
+                                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.9rem', marginBottom: 10, color: 'var(--color-text)' }}>
+                                        Conexión Automática con Facebook (Recomendado)
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={handleOAuthLogin}
+                                        disabled={metaValidating}
+                                        style={{
+                                            width: '100%', padding: '14px 24px', borderRadius: 12, border: 'none',
+                                            background: '#1877F2', color: '#fff', fontWeight: 700, fontSize: '1rem',
+                                            cursor: metaValidating ? 'wait' : 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+                                            boxShadow: '0 4px 16px rgba(24, 119, 242, 0.3)', transition: 'all 0.3s ease'
+                                        }}
+                                    >
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                        </svg>
+                                        {metaValidating ? 'Conectando...' : 'Conectar con Facebook'}
+                                    </button>
+                                </div>
+                            )}
+
                             <label style={{ 
                                 display: 'block', fontWeight: 700, fontSize: '0.9rem', marginBottom: 10,
                                 color: 'var(--color-text)'
                             }}>
-                                {isConnected ? 'Actualizar Token de Página' : 'Pega tu Page Access Token'}
+                                {isConnected ? 'Actualizar Token de Página' : 'Conexión Manual / Enterprise Token'}
                             </label>
                             <div style={{ display: 'flex', gap: 10 }}>
                                 <input
