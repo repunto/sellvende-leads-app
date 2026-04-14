@@ -38,7 +38,8 @@ serve(async (req) => {
 
         // Step 1: Debug the token to check type and validity
         const debugRes = await fetch(
-            `https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(token)}&access_token=${encodeURIComponent(token)}`
+            `https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(token)}`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
         )
         const debugData = await debugRes.json()
         console.log('[validate-meta-token] Token debug:', JSON.stringify(debugData).slice(0, 500))
@@ -69,7 +70,8 @@ serve(async (req) => {
 
         // Step 2: Fetch page info using the token
         const pageRes = await fetch(
-            `https://graph.facebook.com/v19.0/me?fields=id,name,category,fan_count,picture.type(large)&access_token=${encodeURIComponent(token)}`
+            `https://graph.facebook.com/v19.0/me?fields=id,name,category,fan_count,picture.type(large)`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
         )
         const pageData = await pageRes.json()
         console.log('[validate-meta-token] Page info:', JSON.stringify(pageData).slice(0, 500))
@@ -93,8 +95,8 @@ serve(async (req) => {
         let webhookSubscribed = false
         try {
             const subRes = await fetch(
-                `https://graph.facebook.com/v19.0/${pageData.id}/subscribed_apps?subscribed_fields=leadgen&access_token=${encodeURIComponent(token)}`,
-                { method: 'POST' }
+                `https://graph.facebook.com/v19.0/${pageData.id}/subscribed_apps?subscribed_fields=leadgen`,
+                { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }
             )
             const subData = await subRes.json()
             console.log('[validate-meta-token] Webhook subscription:', JSON.stringify(subData))
@@ -107,7 +109,8 @@ serve(async (req) => {
         let leadFormsCount = 0
         try {
             const formsRes = await fetch(
-                `https://graph.facebook.com/v19.0/${pageData.id}/leadgen_forms?fields=id,name,status&limit=5&access_token=${encodeURIComponent(token)}`
+                `https://graph.facebook.com/v19.0/${pageData.id}/leadgen_forms?fields=id,name,status&limit=5`,
+                { headers: { 'Authorization': `Bearer ${token}` } }
             )
             const formsData = await formsRes.json()
             leadFormsCount = formsData.data?.length ?? 0
