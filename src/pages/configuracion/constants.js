@@ -1,6 +1,6 @@
 export const TABS = [
     { id: 'agencia', label: '🏢 Datos de Agencia', icon: '🏢' },
-    { id: 'integraciones', label: '🔌 Integraciones Ads', icon: '🔌' },
+    { id: 'integraciones', label: '🔌 Integraciones Meta', icon: '🔌' },
     { id: 'backup', label: '☁️ Copias de Seguridad', icon: '☁️' },
     { id: 'seed', label: '📥 Datos Iniciales', icon: '📥' },
 ]
